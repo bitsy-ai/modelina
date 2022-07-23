@@ -1,5 +1,6 @@
 import { RustGenerator } from '../../../src/generators';
-
+import { Logger } from '../../../src/utils/LoggingInterface';
+import { UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING } from '../../../src/generators/rust/Constants';
 describe('RustGenerator', () => {
   let generator: RustGenerator;
   beforeEach(() => {
@@ -66,6 +67,58 @@ describe('RustGenerator', () => {
     expect(generator.reservedRustKeyword('dinosaur')).toBe(false);
     expect(generator.reservedRustKeyword('class')).toBe(false);
   });
+
+  it('should prefix a reserved keyword appearing in document', async () => {
+    const doc = {
+      $id: 'Self',
+      type: 'object',
+      properties: {
+        union: { type: 'string' },
+      },
+      required: ['union'],
+      additionalProperties: false
+    };
+    const inputModel = await generator.process(doc);
+    const model = inputModel.models['Self'];
+
+    const structModel = await generator.renderStruct(model, inputModel);
+    // struct is expected to prefix reserved keywords
+    const expected = `// ReservedSelf represents a ReservedSelf model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ReservedSelf {
+  #[serde(rename = "union")]
+  pub reserved_union: String,
+}`;
+    expect(structModel.result).toEqual(expected);
+  });
+
+  it('should log warning about polymorphic models', async () => {
+    jest.spyOn(Logger, 'warn');
+
+    const doc = {
+      $id: '_address',
+      type: 'object',
+      properties: {
+        members: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }], },
+      },
+      required: ['members'],
+      additionalProperties: false
+    };
+    const inputModel = await generator.process(doc);
+    const model = inputModel.models['_address'];
+
+    const structModel = await generator.render(model, inputModel);
+    // struct is expected to prefix reserved keywords
+    const expected = `// Address represents a Address model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Address {
+  #[serde(rename = "members")]
+  pub members: serde_json::Value,
+}`;
+    expect(structModel.result).toEqual(expected);
+    expect(Logger.warn).toBeCalledWith(UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING('members'));
+  });
+
   test('serde should perserve original field name/case', async () => {
     const doc = {
       $id: '_address',
@@ -105,6 +158,7 @@ pub struct Address {
         city: { type: 'string', description: 'City description' },
         state: { type: 'string' },
         house_number: { type: 'number' },
+        members: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }], },
         array_type: { type: 'array', items: { type: 'string' } },
       },
       required: ['street_name', 'city', 'state', 'house_number', 'array_type'],
@@ -128,6 +182,8 @@ pub struct Address {
   pub state: String,
   #[serde(rename = "house_number")]
   pub house_number: f64,
+  #[serde(rename = "members", skip_serializing_if = "Option::is_none")]
+  pub members: Option<serde_json::Value>,
   #[serde(rename = "array_type")]
   pub array_type: Vec<String>,
   #[serde(rename = "additionalProperties")]
@@ -201,7 +257,7 @@ pub struct Address {
     const inputModel = await generator.process(doc);
     const model = inputModel.models['States'];
 
-    const expected = `// States enum of type String
+    const expected = `// States enum of type: String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum States {
   #[serde(rename = "Texas")]
@@ -216,17 +272,16 @@ pub enum States {
     expect(enumModel.dependencies).toEqual([]);
   });
 
-  test('should render `enum` where members are different types', async () => {
+  test('should render union `enum` where members are different types', async () => {
     const doc = {
       $id: 'States',
-      type: 'string',
       enum: ['Texas', 1, '1', false, { test: 'test' }],
     };
 
     const inputModel = await generator.process(doc);
     const model = inputModel.models['States'];
 
-    const expected = `// States enum of type String
+    const expected = `// States enum of type: [string,number,boolean,object]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum States {
   #[serde(rename = "0")]
@@ -243,5 +298,8 @@ pub enum States {
     const enumModel = await generator.renderEnum(model, inputModel);
     expect(enumModel.result).toEqual(expected);
     expect(enumModel.dependencies).toEqual([]);
+
+    const module = await generator.render(model, inputModel);
+    expect(module.result).toEqual(enumModel.result);
   });
 });

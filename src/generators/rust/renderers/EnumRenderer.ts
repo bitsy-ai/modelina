@@ -11,7 +11,7 @@ import { pascalCaseTransformMerge } from 'change-case';
 export class EnumRenderer extends RustRenderer {
   public defaultSelf(): string {
     const formattedName = this.nameType(this.model.$id);
-    const enumType = this.enumType(this.model);
+    const enumType = typeof (this.model.type) === 'object' ? `[${this.model.type}]` : this.enumType(this.model);
     const doc = formattedName && this.renderCommentForEnumType(formattedName, enumType);
 
     const enumValues: string[] = [];
@@ -73,7 +73,7 @@ ${this.indent(this.renderBlock(enumValues))}
   }
 
   renderCommentForEnumType(name: string, type: string): string {
-    return this.renderComments(`${name} enum of type ${type}`);
+    return this.renderComments(`${name} enum of type: ${type}`);
   }
 }
 

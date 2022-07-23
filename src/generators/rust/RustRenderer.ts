@@ -5,7 +5,8 @@ import { DefaultPropertyNames, getUniquePropertyName } from '../../helpers';
 
 import { RustGenerator, RustOptions } from './RustGenerator';
 import { FieldType } from './RustPreset';
-import { isReservedRustKeyword } from './Constants';
+import { isReservedRustKeyword, UNSTABLE_FIELD_IMPLEMENTATION_WARNING } from './Constants';
+import { Logger } from '../../utils';
 
 /**
  * Options for rendering a Rust type
@@ -92,19 +93,6 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
       ? this.options.namingConvention.type(name, { model: model || this.model, inputModel: this.inputModel, reservedKeywordCallback: isReservedRustKeyword })
       : name || '';
   }
-
-  /**
-   * Renders the name of a Model
-   * 
-   * @param fieldName 
-   * @param field
-   */
-  nameModel(fieldName: string | undefined, field?: CommonModel): string {
-    return this.options?.namingConvention?.field
-      ? this.options.namingConvention.field(fieldName, { model: this.model, inputModel: this.inputModel, field, reservedKeywordCallback: isReservedRustKeyword })
-      : fieldName || '';
-  }
-
   /**
    * Renders the name of a field based on provided generator option naming convention field function.
    * 
@@ -143,13 +131,6 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
   runTuplePreset(fieldName: string, field: CommonModel): Promise<string> {
     const parent = this.model;
     return this.runPreset('tuple', { fieldName, field, parent });
-  }
-
-  runAdditionalPropertyPreset(fieldName: string, field: CommonModel, type: FieldType = FieldType.field): Promise<string> {
-    return this.runPreset('additionalProperty', { fieldName, field, type, required: true });
-  }
-  runPatternPropertyPreset(fieldName: string, field: CommonModel, type: FieldType = FieldType.field): Promise<string> {
-    return this.runPreset('patternProperty', { fieldName, field, type, required: true });
   }
   runFieldPreset(fieldName: string, field: CommonModel, type: FieldType = FieldType.field): Promise<string> {
     const required = (type === FieldType.additionalProperty || type === FieldType.patternProperties) ? true : this.isFieldRequired(fieldName);
@@ -191,34 +172,43 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
   /* eslint-disable sonarjs/no-duplicate-string */
   toRustType(type: undefined | string | string[], field: CommonModel, options: RustRenderFieldTypeOptions): string {
     switch (type) {
-    case 'string':
-      return 'String';
-    case 'int32':
-    case 'integer':
-      return 'i32';
-    case 'int64':
-    case 'long':
-      return 'i64';
-    case 'number':
-      return 'f64';
-    case 'boolean':
-      return 'bool';
-    case 'object':
-      return 'serde_json::Value';
-    case 'array': {
-      // handle single field.item where type is uniform
-      if (field.items && !Array.isArray(field.items)) {
-        const innerType = this.renderType(field?.items, { required: true } as RustRenderFieldTypeOptions);
-        return `Vec<${innerType}>`;
-        // handle tuple of heterogenous types 
-      } else if (this.isAnonymousTuple(field)) {
-        this.dependencies.push(this.nameTupleType(options));
-        return this.nameTupleField(options);
+      case 'string':
+        return 'String';
+      case 'int32':
+      case 'integer':
+        return 'i32';
+      case 'int64':
+      case 'long':
+        return 'i64';
+      case 'number':
+        return 'f64';
+      case 'boolean':
+        return 'bool';
+      case 'object':
+        // An "anonymous" struct-like object will result in a named struct being generated at module-level scope
+        let fieldName = this.nameType(options.originalFieldName);
+        this.dependencies.push(fieldName);
+        return `Box<${fieldName}>`;
+      case 'array': {
+        // handle single field.item where type is uniform
+        if (field.items && !Array.isArray(field.items)) {
+          const innerType = this.renderType(field?.items, { required: true } as RustRenderFieldTypeOptions);
+          return `Vec<${innerType}>`;
+          // handle tuple of heterogenous types 
+        } else if (this.isAnonymousTuple(field)) {
+          this.dependencies.push(this.nameTupleType(options));
+          return this.nameTupleField(options);
+        }
+        // we should never reach this return statement, but log a warning if we do.
+        // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
+        Logger.warn(UNSTABLE_FIELD_IMPLEMENTATION_WARNING(options.originalFieldName));
+        return 'serde_json::Value';
       }
-      return 'serde_json::Value';
-    }
-    // allow end-user to implement serde strategy with From<serde_json::Value<T>>
-    default: return 'serde_json::Value';
+      default: {
+        Logger.warn(UNSTABLE_FIELD_IMPLEMENTATION_WARNING(options.originalFieldName));
+        // end-user must implement serde strategy with From<serde_json::Value<T>>
+        return 'serde_json::Value';
+      }
     }
   }
 }

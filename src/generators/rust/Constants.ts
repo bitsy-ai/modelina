@@ -64,3 +64,6 @@ export const RESERVED_RUST_KEYWORDS = [
 export function isReservedRustKeyword(word: string): boolean {
   return RESERVED_RUST_KEYWORDS.includes(word);
 }
+
+export function UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING(fieldName: string): string { return `Polymorphic and union types are not fully implemented in Rust generator. ${fieldName} output will be unstable!`; }
+export function UNSTABLE_FIELD_IMPLEMENTATION_WARNING(fieldName: string): string { return `Unsure how to handle ${fieldName}, so you must implement serialization (e.g From<serde_json::Value<T>>) - please open an issue with your schema and example data.`; }

@@ -25,7 +25,7 @@ pub struct ComponentsSchemasSettings {
 }",
   ],
   Array [
-    "// Cities enum of type String
+    "// Cities enum of type: String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Cities {
   #[serde(rename = \\"London\\")]
@@ -37,7 +37,7 @@ pub enum Cities {
 }",
   ],
   Array [
-    "// ClickOptions enum of type String
+    "// ClickOptions enum of type: String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum ClickOptions {
   #[serde(rename = \\"click_and_play\\")]
@@ -47,7 +47,7 @@ pub enum ClickOptions {
 }",
   ],
   Array [
-    "// Options enum of type i32
+    "// Options enum of type: i32
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Options {
   #[serde(rename = \\"first_option\\")]
@@ -79,7 +79,7 @@ pub struct ComponentsSchemasSettings {
 }",
   ],
   Array [
-    "// Cities enum of type String
+    "// Cities enum of type: String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Cities {
   #[serde(rename = \\"London\\")]
@@ -91,7 +91,7 @@ pub enum Cities {
 }",
   ],
   Array [
-    "// ClickOptions enum of type String
+    "// ClickOptions enum of type: String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum ClickOptions {
   #[serde(rename = \\"click_and_play\\")]
@@ -101,7 +101,7 @@ pub enum ClickOptions {
 }",
   ],
   Array [
-    "// Options enum of type i32
+    "// Options enum of type: i32
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Options {
   #[serde(rename = \\"first_option\\")]

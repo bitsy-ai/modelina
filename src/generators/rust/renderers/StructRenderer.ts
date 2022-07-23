@@ -8,11 +8,12 @@ import { FieldType, StructPreset } from '../RustPreset';
  */
 export class StructRenderer extends RustRenderer {
   public async defaultSelf(): Promise<string> {
-    // render struct fields
+    // render struct fields for top-level object
     const fieldContent = [
       await this.renderFields(),
       await this.runAdditionalContentPreset()
     ];
+
     const formattedName = this.nameType(this.model.$id);
     const doc = this.renderComments(`${formattedName} represents a ${formattedName} model.`);
 

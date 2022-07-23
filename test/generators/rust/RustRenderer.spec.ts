@@ -12,11 +12,20 @@ describe('RustRenderer', () => {
 
   describe('renderType', () => {
     test('Should render optional integer as Option<i32> type', () => {
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int32' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i32>');
       expect(renderer.renderType(CommonModel.toCommonModel({ type: 'integer' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i32>');
     });
     test('Should render required integer as i32 type', () => {
-      const fieldNam = 'myInt';
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int32' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i32');
       expect(renderer.renderType(CommonModel.toCommonModel({ type: 'integer' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i32');
+    });
+    test('Should render optional long as Option<i64> type', () => {
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int64' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i64>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'long' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i64>');
+    });
+    test('Should render required long as i64 type', () => {
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int64' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i64');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'long' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i64');
     });
     test('Should render optional number as Option<f64> type', () => {
       expect(renderer.renderType(CommonModel.toCommonModel({ type: 'number' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<f64>');
@@ -144,6 +153,22 @@ describe('RustRenderer', () => {
         $ref: '<anonymous-schema-1>'
       });
       expect(renderer.renderType(model, { originalFieldName: '', required: true, } as RustRenderFieldTypeOptions)).toEqual('Box<crate::models::AnonymousSchema1>');
+    });
+    test('Should render anonymous object as boxed ref to struct in the same module', () => {
+      const model = CommonModel.toCommonModel({
+        $id: 'MyModel',
+        type: 'object',
+        properties: {
+          anonymousObject: {
+            type: 'object',
+            description: 'An object without a $ref to a component schema',
+            properties: {
+              street_name: { type: 'string' },
+            }
+          }
+        }
+      });
+      expect(renderer.renderType(model, { originalFieldName: 'anonymousObject', required: true, })).toEqual('Box<AnonymousObject>');
     });
   });
 });
