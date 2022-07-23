@@ -73,7 +73,7 @@ ${this.indent(this.renderBlock(enumValues))}
   }
 
   renderCommentForEnumType(name: string, type: string): string {
-    return `${name} enum (type: ${type})`;
+    return this.renderComments(`${name} enum of type ${type}`);
   }
 }
 

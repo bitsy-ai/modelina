@@ -201,7 +201,7 @@ pub struct Address {
     const inputModel = await generator.process(doc);
     const model = inputModel.models['States'];
 
-    const expected = `States enum (type: String)
+    const expected = `// States enum of type String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum States {
   #[serde(rename = "Texas")]
@@ -226,7 +226,7 @@ pub enum States {
     const inputModel = await generator.process(doc);
     const model = inputModel.models['States'];
 
-    const expected = `States enum (type: String)
+    const expected = `// States enum of type String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum States {
   #[serde(rename = "0")]
