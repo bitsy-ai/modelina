@@ -17,15 +17,12 @@ RUN apt install apt-transport-https dirmngr gnupg ca-certificates -yq  \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF \
     && echo "deb https://download.mono-project.com/repo/debian stable-buster main" | tee /etc/apt/sources.list.d/mono-official-stable.list \
     && apt update -yq  \
-    && apt install mono-devel -yq
+    && apt install mono-devel -yq 
 
 # Install rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
-# Setup library
-RUN mkdir /app
-WORKDIR /app
+# Setup library 
 COPY package-lock.json .
-COPY package.json .
 RUN npm install
 COPY . .
