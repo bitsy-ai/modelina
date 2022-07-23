@@ -1,0 +1,114 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Should be able to render Rust Models and should log expected output to console 1`] = `
+Array [
+  Array [
+    "// Customer represents a Customer model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Customer {
+  #[serde(rename = \\"email\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub email: Option<String>,
+  #[serde(rename = \\"settings\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub settings: Option<Box<crate::models::ComponentsSchemasSettings>>,
+}",
+  ],
+  Array [
+    "// ComponentsSchemasSettings represents a ComponentsSchemasSettings model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ComponentsSchemasSettings {
+  #[serde(rename = \\"cities\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub cities: Option<Box<crate::models::Cities>>,
+  #[serde(rename = \\"click_options\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub click_options: Option<Box<crate::models::ClickOptions>>,
+  #[serde(rename = \\"options\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub options: Option<Box<crate::models::Options>>,
+}",
+  ],
+  Array [
+    "// Cities enum of type String
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Cities {
+  #[serde(rename = \\"London\\")]
+  London,
+  #[serde(rename = \\"Rome\\")]
+  Rome,
+  #[serde(rename = \\"Brussels\\")]
+  Brussels,
+}",
+  ],
+  Array [
+    "// ClickOptions enum of type String
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum ClickOptions {
+  #[serde(rename = \\"click_and_play\\")]
+  ClickAndPlay,
+  #[serde(rename = \\"click&pay\\")]
+  ClickPay,
+}",
+  ],
+  Array [
+    "// Options enum of type i32
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Options {
+  #[serde(rename = \\"first_option\\")]
+  FirstOption,
+  #[serde(rename = \\"second_option\\")]
+  SecondOption,
+}",
+  ],
+  Array [
+    "// Customer represents a Customer model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Customer {
+  #[serde(rename = \\"email\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub email: Option<String>,
+  #[serde(rename = \\"settings\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub settings: Option<Box<crate::models::ComponentsSchemasSettings>>,
+}",
+  ],
+  Array [
+    "// ComponentsSchemasSettings represents a ComponentsSchemasSettings model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ComponentsSchemasSettings {
+  #[serde(rename = \\"cities\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub cities: Option<Box<crate::models::Cities>>,
+  #[serde(rename = \\"click_options\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub click_options: Option<Box<crate::models::ClickOptions>>,
+  #[serde(rename = \\"options\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub options: Option<Box<crate::models::Options>>,
+}",
+  ],
+  Array [
+    "// Cities enum of type String
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Cities {
+  #[serde(rename = \\"London\\")]
+  London,
+  #[serde(rename = \\"Rome\\")]
+  Rome,
+  #[serde(rename = \\"Brussels\\")]
+  Brussels,
+}",
+  ],
+  Array [
+    "// ClickOptions enum of type String
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum ClickOptions {
+  #[serde(rename = \\"click_and_play\\")]
+  ClickAndPlay,
+  #[serde(rename = \\"click&pay\\")]
+  ClickPay,
+}",
+  ],
+  Array [
+    "// Options enum of type i32
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Options {
+  #[serde(rename = \\"first_option\\")]
+  FirstOption,
+  #[serde(rename = \\"second_option\\")]
+  SecondOption,
+}",
+  ],
+]
+`;
