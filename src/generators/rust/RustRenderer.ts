@@ -54,6 +54,9 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     }
 
     if (this.model.additionalProperties !== undefined) {
+      console.log('***additionalProperties', this.model.additionalProperties);
+      console.log('***iputModel', this.model.originalInput);
+
       const propertyName = getUniquePropertyName(this.model, DefaultPropertyNames.additionalProperties);
       const additionalProperty = await this.runFieldPreset(propertyName, this.model.additionalProperties, FieldType.additionalProperty);
       content.push(additionalProperty);
@@ -80,6 +83,11 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
       ? this.options.namingConvention.module(name, { model: model || this.model, inputModel: this.inputModel, reservedKeywordCallback: isReservedRustKeyword })
       : name || '';
   }
+
+  nameModuleFile(name: string | undefined, model?: CommonModel): string {
+    return `src/${this.nameModule(name, model)}.rs`;
+  }
+
   /**
    * Renders the name of a type based on provided generator option naming convention type function.
    * 
@@ -147,7 +155,7 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     let fieldType = '';
     if (model.$ref !== undefined) {
       const formattedRef = this.nameType(model.$ref);
-      fieldType = `Box<crate::models::${formattedRef}>`;
+      fieldType = `Box<crate::${formattedRef}>`;
     } else {
       fieldType = this.toRustType(model?.type, model, options);
     }
@@ -199,6 +207,7 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
         const fieldName = this.nameTupleType(options);
         const dependency: RustDependency = { originalFieldName: options.originalFieldName, type: RustDependencyType.tuple, field, fieldName, parent: this.model };
         this.addRustDependency(dependency);
+        this.addDependency(fieldName);
         return `Box<${fieldName}>`;
       }
       // we should never reach this return statement, but log a warning if we do.
@@ -211,7 +220,8 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
       const fieldName = this.nameType(options.originalFieldName);
       const dependency: RustDependency = { originalFieldName: options.originalFieldName, type: RustDependencyType.struct, field, fieldName, parent: this.model };
       this.addRustDependency(dependency);
-      return `Box<crate::models::${fieldName}>`;
+      this.addDependency(fieldName);
+      return `Box<crate::${fieldName}>`;
     }
     }
   }

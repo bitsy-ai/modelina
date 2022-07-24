@@ -1,9 +1,11 @@
 import * as path from 'path';
 import {
-  RustFileGenerator, FileHelpers, RustRenderCompleteModelOptions, defaultRustRenderCompleteModelOptions,
-  OutputModel, CommonInputModel, CommonModel
+  RustFileGenerator, FileHelpers,
+  OutputModel, CommonInputModel, CommonModel, defaultRustRenderCompleteModelOptions, RustRenderCompleteModelOptions
 } from '../../../src';
-describe('TypeScriptFileGenerator', () => {
+import { RustOutputModel } from '../../../src/generators/rust/RustOutput';
+
+describe('RustFileGenerator', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -32,18 +34,40 @@ describe('TypeScriptFileGenerator', () => {
     test('should throw accurate error if file cannot be written', async () => {
       const generator = new RustFileGenerator();
       const expectedError = new Error('write error');
+      const expectedFilename = 'src/Test.rs';
       jest.spyOn(FileHelpers, 'writerToFileSystem').mockRejectedValue(expectedError);
-      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new OutputModel('content', new CommonModel(), 'Test', new CommonInputModel(), [])]);
+      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new RustOutputModel('content', new CommonModel(), 'Test', new CommonInputModel(), [], expectedFilename)]);
 
       await expect(generator.generateToFiles(doc, '/test/', defaultRustRenderCompleteModelOptions)).rejects.toEqual(expectedError);
       expect(generator.generateCompleteModels).toHaveBeenCalledTimes(1);
       expect(FileHelpers.writerToFileSystem).toHaveBeenCalledTimes(1);
     });
+    test('should not generate supporting files', async () => {
+      const generator = new RustFileGenerator();
+      const outputDir = './test';
+      const expectedFilename = 'src/Test.rs';
+
+      const expectedOutputDirPath = path.resolve(outputDir);
+      const expectedOutputFilePath = path.resolve(`${outputDir}/${expectedFilename}`);
+      const expectedWriteToFileParameters = [
+        ['content',
+          expectedOutputFilePath,]];
+      jest.spyOn(FileHelpers, 'writerToFileSystem').mockResolvedValue(undefined);
+      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new RustOutputModel('content', new CommonModel(), 'Test', new CommonInputModel(), [], expectedFilename)]);
+
+      await generator.generateToFiles(doc, expectedOutputDirPath, { renderSupportingFiles: false } as RustRenderCompleteModelOptions);
+      expect(generator.generateCompleteModels).toHaveBeenCalledTimes(1);
+      expect(FileHelpers.writerToFileSystem).toHaveBeenCalledTimes(1);
+      expect((FileHelpers.writerToFileSystem as jest.Mock).mock.calls[0]).toEqual(expectedWriteToFileParameters[0]);
+    });
+
     test('should try and generate models and supporting files', async () => {
       const generator = new RustFileGenerator();
       const outputDir = './test';
+      const expectedFilename = 'src/Test.rs';
+
       const expectedOutputDirPath = path.resolve(outputDir);
-      const expectedOutputFilePath = path.resolve(`${outputDir}/src/Test.rs`);
+      const expectedOutputFilePath = path.resolve(`${outputDir}/${expectedFilename}`);
       const expectedWriteToFileParameters = [
         ['content',
           expectedOutputFilePath,],
@@ -74,16 +98,16 @@ extern crate serde;
 extern crate serde_json;
 
 pub mod test;
-pub use self::test::*;
-`, path.resolve(`${outputDir}/src/lib.rs`)
+pub use self::test::*;`,
+          path.resolve(`${outputDir}/src/lib.rs`)
         ]
       ];
       jest.spyOn(FileHelpers, 'writerToFileSystem').mockResolvedValue(undefined);
-      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new OutputModel('content', new CommonModel(), 'Test', new CommonInputModel(), [])]);
+      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new RustOutputModel('content', new CommonModel(), 'Test', new CommonInputModel(), [], expectedFilename)]);
 
-      const generatedModels = await generator.generateToFiles(doc, expectedOutputDirPath, defaultRustRenderCompleteModelOptions);
+      const generatedModels = await generator.generateToFiles(doc, expectedOutputDirPath, { renderSupportingFiles: true } as RustRenderCompleteModelOptions);
       expect(generator.generateCompleteModels).toHaveBeenCalledTimes(1);
-      expect(FileHelpers.writerToFileSystem).toHaveBeenCalledTimes(1);
+      expect(FileHelpers.writerToFileSystem).toHaveBeenCalledTimes(3);
       expect((FileHelpers.writerToFileSystem as jest.Mock).mock.calls[0]).toEqual(expectedWriteToFileParameters[0]);
 
       await generator.generateSupportFiles(generatedModels, outputDir, defaultRustRenderCompleteModelOptions);
@@ -96,9 +120,8 @@ pub use self::test::*;
       const outputDir = './test';
       const expectedOutputDirPath = path.resolve(outputDir);
       jest.spyOn(FileHelpers, 'writerToFileSystem').mockResolvedValue(undefined);
-      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new OutputModel('content', new CommonModel(), '', new CommonInputModel(), [])]);
-
-      const models = await generator.generateToFiles(doc, expectedOutputDirPath, defaultRustRenderCompleteModelOptions);
+      jest.spyOn(generator, 'generateCompleteModels').mockResolvedValue([new RustOutputModel('content', new CommonModel(), '', new CommonInputModel(), [], '')]);
+      const models = await generator.generateToFiles(doc, expectedOutputDirPath, { renderSupportingFiles: false } as RustRenderCompleteModelOptions);
       expect(generator.generateCompleteModels).toHaveBeenCalledTimes(1);
       expect(FileHelpers.writerToFileSystem).toHaveBeenCalledTimes(0);
       expect(models).toHaveLength(0);

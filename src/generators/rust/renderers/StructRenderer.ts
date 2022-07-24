@@ -48,7 +48,8 @@ export const RUST_DEFAULT_STRUCT_PRESET: StructPreset<StructRenderer> = {
     const macro = renderer.renderFieldMacro(options);
     let fieldType = renderer.renderType(field, options);
     if (type === FieldType.additionalProperty || type === FieldType.patternProperties) {
-      fieldType = `HashMap<String, ${fieldType}>`;
+      console.log('*** field.type', field.type);
+      fieldType = `std::collections::HashMap<String, ${renderer.toRustType(field.type, field, options)}>`;
     }
     return `${macro}
 pub ${outFieldName}: ${fieldType},`;

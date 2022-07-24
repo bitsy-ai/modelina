@@ -2,6 +2,7 @@ import { RustRenderer, RustRenderFieldTypeOptions } from '../RustRenderer';
 import { EnumPreset, CommonModel } from '../../../models';
 import { FormatHelpers } from '../../../helpers';
 import { pascalCaseTransformMerge } from 'change-case';
+import { isReservedRustKeyword } from '../Constants';
 
 /**
  * Renderer for Rust's `enum` type
@@ -41,11 +42,20 @@ ${this.indent(this.renderBlock(enumValues))}
     return model.enum?.every(v => typeof (v) === matchType);
   }
 
+  isEnumString(model: CommonModel): boolean {
+    return model.type === 'string';
+  }
+
   renderUniformEnum(model: CommonModel): string {
     if (model.enum === undefined) { return ''; }
     const result = model.enum.map(v => {
+      let enumMember = v.toString();
+      // if we're not rendering an Enum of Strings, add safe prefix/suffixes to avoid syntax errors from integers and other values enum values
+      if (!this.isEnumString(model) && this.options?.namingConvention?.enumMember !== undefined) {
+        enumMember = this.options.namingConvention.enumMember(v, { model, inputModel: this.inputModel, reservedKeywordCallback: isReservedRustKeyword });
+      }
       const macroContent = this.renderEnumMemberMacro(v);
-      const valueContent = `${FormatHelpers.toPascalCase(v, { transform: pascalCaseTransformMerge })},`;
+      const valueContent = `${FormatHelpers.toPascalCase(enumMember, { transform: pascalCaseTransformMerge })},`;
       return [macroContent, valueContent];
     });
     return this.renderBlock(result.flat());

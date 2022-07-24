@@ -19,7 +19,8 @@ export type RustDependency = {
 export interface ToRustRenderOutputArg {
   result: string;
   renderedName: string;
-  rustModuleDependencies?: RustDependency[];
+  rustModuleDependencies: RustDependency[];
+  fileName: string;
 }
 
 /**
@@ -29,10 +30,11 @@ export class RustRenderOutput extends RenderOutput {
   constructor(
     public readonly result: string,
     public readonly renderedName: string,
-    public readonly rustModuleDependencies: RustDependency[] = []
-  ) { super(result, renderedName, []); this.rustModuleDependencies = rustModuleDependencies; }
+    public readonly rustModuleDependencies: RustDependency[] = [],
+    public readonly fileName: string = ''
+  ) { super(result, renderedName, []); this.rustModuleDependencies = rustModuleDependencies; this.fileName = fileName; }
 
   static toRustRenderOutput(args: ToRustRenderOutputArg): RustRenderOutput {
-    return new this(args.result, args.renderedName, args.rustModuleDependencies);
+    return new this(args.result, args.renderedName, args.rustModuleDependencies, args.fileName);
   }
 }

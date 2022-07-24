@@ -113,7 +113,7 @@ pub struct ReservedSelf {
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
   #[serde(rename = "members")]
-  pub members: Box<crate::models::Members>,
+  pub members: Box<crate::Members>,
 }`;
     expect(structModel.result).toEqual(expected);
     expect(Logger.warn).toBeCalledWith(UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING('members'));
@@ -183,13 +183,13 @@ pub struct Address {
   #[serde(rename = "house_number")]
   pub house_number: f64,
   #[serde(rename = "members", skip_serializing_if = "Option::is_none")]
-  pub members: Option<Box<crate::models::Members>>,
+  pub members: Option<Box<crate::Members>>,
   #[serde(rename = "array_type")]
   pub array_type: Vec<String>,
   #[serde(rename = "additionalProperties")]
-  pub additional_properties: HashMap<String, String>,
+  pub additional_properties: std::collections::HashMap<String, String>,
   #[serde(rename = "^S(.?*)test&PatternProperties")]
-  pub s_test_pattern_properties: HashMap<String, String>,
+  pub s_test_pattern_properties: std::collections::HashMap<String, String>,
 }`;
 
     const inputModel = await generator.process(doc);
@@ -321,7 +321,7 @@ pub enum States {
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
   #[serde(rename = "nested_object", skip_serializing_if = "Option::is_none")]
-  pub nested_object: Option<Box<crate::models::NestedObject>>,
+  pub nested_object: Option<Box<crate::NestedObject>>,
 }`;
     const inputModel = await generator.process(doc);
     const model = inputModel.models['_address'];
