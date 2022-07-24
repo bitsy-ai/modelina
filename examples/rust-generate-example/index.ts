@@ -1,6 +1,4 @@
-import { RustGenerator } from '../../src';
-
-const generator = new RustGenerator();
+import { RustFileGenerator, RustRenderCompleteModelOptions } from '../../src';
 const AsyncAPIDocument = {
   asyncapi: '2.4.0',
   info: {
@@ -53,6 +51,14 @@ const AsyncAPIDocument = {
             type: 'integer',
             enum: ['first_option', 'second_option'],
           },
+          example_nested_object: {
+            $id: 'ExampleNestedObjects',
+            type: 'object',
+            properties: {
+              street_name: { type: 'string' },
+            },
+          },
+          example_tuple_type: { type: 'array', items: [{ type: 'string' }, { type: 'number' }] },
         }
       }
     }
@@ -60,7 +66,9 @@ const AsyncAPIDocument = {
 };
 
 export async function generate(): Promise<void> {
-  const models = await generator.generate(AsyncAPIDocument);
+  const generator = new RustFileGenerator();
+  const renderModelOptions: RustRenderCompleteModelOptions = { packageName: 'rust-generate-example' };
+  const models = await generator.generateToFiles(AsyncAPIDocument, './output', renderModelOptions);
   for (const model of models) {
     console.log(model.result);
   }

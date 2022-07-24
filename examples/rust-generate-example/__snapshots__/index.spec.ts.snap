@@ -13,7 +13,10 @@ pub struct Customer {
 }",
   ],
   Array [
-    "// ComponentsSchemasSettings represents a ComponentsSchemasSettings model.
+    "// ComponentsSchemasSettingsExampleTupleType represents field example_tuple_type from #/components/schemas/Settings model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ComponentsSchemasSettingsExampleTupleType(String, f64);
+// ComponentsSchemasSettings represents a ComponentsSchemasSettings model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct ComponentsSchemasSettings {
   #[serde(rename = \\"cities\\", skip_serializing_if = \\"Option::is_none\\")]
@@ -22,6 +25,10 @@ pub struct ComponentsSchemasSettings {
   pub click_options: Option<Box<crate::models::ClickOptions>>,
   #[serde(rename = \\"options\\", skip_serializing_if = \\"Option::is_none\\")]
   pub options: Option<Box<crate::models::Options>>,
+  #[serde(rename = \\"example_nested_object\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub example_nested_object: Option<Box<crate::models::ExampleNestedObjects>>,
+  #[serde(rename = \\"example_tuple_type\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub example_tuple_type: Option<Box<ComponentsSchemasSettingsExampleTupleType>>,
 }",
   ],
   Array [
@@ -54,6 +61,16 @@ pub enum Options {
   FirstOption,
   #[serde(rename = \\"second_option\\")]
   SecondOption,
+}",
+  ],
+  Array [
+    "// ExampleNestedObjects represents a ExampleNestedObjects model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ExampleNestedObjects {
+  #[serde(rename = \\"street_name\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub street_name: Option<String>,
+  #[serde(rename = \\"additionalProperties\\")]
+  pub additional_properties: HashMap<String, Box<crate::models::AdditionalProperties>>,
 }",
   ],
   Array [
@@ -67,7 +84,10 @@ pub struct Customer {
 }",
   ],
   Array [
-    "// ComponentsSchemasSettings represents a ComponentsSchemasSettings model.
+    "// ComponentsSchemasSettingsExampleTupleType represents field example_tuple_type from #/components/schemas/Settings model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ComponentsSchemasSettingsExampleTupleType(String, f64);
+// ComponentsSchemasSettings represents a ComponentsSchemasSettings model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct ComponentsSchemasSettings {
   #[serde(rename = \\"cities\\", skip_serializing_if = \\"Option::is_none\\")]
@@ -76,6 +96,10 @@ pub struct ComponentsSchemasSettings {
   pub click_options: Option<Box<crate::models::ClickOptions>>,
   #[serde(rename = \\"options\\", skip_serializing_if = \\"Option::is_none\\")]
   pub options: Option<Box<crate::models::Options>>,
+  #[serde(rename = \\"example_nested_object\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub example_nested_object: Option<Box<crate::models::ExampleNestedObjects>>,
+  #[serde(rename = \\"example_tuple_type\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub example_tuple_type: Option<Box<ComponentsSchemasSettingsExampleTupleType>>,
 }",
   ],
   Array [
@@ -108,6 +132,16 @@ pub enum Options {
   FirstOption,
   #[serde(rename = \\"second_option\\")]
   SecondOption,
+}",
+  ],
+  Array [
+    "// ExampleNestedObjects represents a ExampleNestedObjects model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ExampleNestedObjects {
+  #[serde(rename = \\"street_name\\", skip_serializing_if = \\"Option::is_none\\")]
+  pub street_name: Option<String>,
+  #[serde(rename = \\"additionalProperties\\")]
+  pub additional_properties: HashMap<String, Box<crate::models::AdditionalProperties>>,
 }",
   ],
 ]
