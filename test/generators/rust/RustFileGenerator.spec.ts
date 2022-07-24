@@ -110,7 +110,7 @@ pub use self::test::*;`,
       expect(FileHelpers.writerToFileSystem).toHaveBeenCalledTimes(3);
       expect((FileHelpers.writerToFileSystem as jest.Mock).mock.calls[0]).toEqual(expectedWriteToFileParameters[0]);
 
-      await generator.generateSupportFiles(generatedModels, outputDir, defaultRustRenderCompleteModelOptions);
+      await generator.generateSupportFiles(generatedModels, outputDir);
       expect((FileHelpers.writerToFileSystem as jest.Mock).mock.calls[1]).toEqual(expectedWriteToFileParameters[1]);
       expect((FileHelpers.writerToFileSystem as jest.Mock).mock.calls[2]).toEqual(expectedWriteToFileParameters[2]);
     });

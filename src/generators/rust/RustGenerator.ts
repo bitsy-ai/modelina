@@ -2,14 +2,15 @@ import { AbstractGenerator, CommonGeneratorOptions, defaultGeneratorOptions } fr
 import { snakeCase } from 'change-case';
 import { Logger } from '../../utils/LoggingInterface';
 import { TypeHelpers, ModelKind, FormatHelpers } from '../../helpers';
-import { CommonModel, CommonInputModel, Draft4Schema, Draft6Schema, Draft7Schema, OpenapiV3Schema, AsyncapiV2Schema, SwaggerV2Schema } from '../../models';
+import { CommonModel, CommonInputModel } from '../../models';
 import { pascalCaseTransformMerge } from 'change-case';
+import { DefaultPropertyNames, getUniquePropertyName } from '../../helpers';
 
 import { RustPreset, RUST_DEFAULT_PRESET } from './RustPreset';
 import { StructRenderer } from './renderers/StructRenderer';
 import { TupleRenderer } from './renderers/TupleRenderer';
 import { EnumRenderer } from './renderers/EnumRenderer';
-import { isReservedRustKeyword, UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING } from './Constants';
+import { isReservedRustKeyword } from './Constants';
 import { RustRenderOutput, RustDependency, RustDependencyType } from './RustRenderOutput';
 import { PackageRenderer } from './renderers/PackageRenderer';
 import { RustOutputModel } from './RustOutput';
@@ -17,6 +18,7 @@ import { RustOutputModel } from './RustOutput';
  * The Rust naming convention type
  */
 export type RustNamingConvention = {
+  additionalPropertyType?: (ctx: { model: CommonModel, inputModel: CommonInputModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
   enumMember?: (name: string | undefined, ctx: { model: CommonModel, inputModel: CommonInputModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
   type?: (name: string | undefined, ctx: { model: CommonModel, inputModel: CommonInputModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
   field?: (name: string | undefined, ctx: { model: CommonModel, inputModel: CommonInputModel, field?: CommonModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
@@ -27,6 +29,15 @@ export type RustNamingConvention = {
  * default RustNamingConvention implementation
  */
 export const RustNamingConventionImplementation: RustNamingConvention = {
+  additionalPropertyType: (ctx) => {
+    if (ctx.model.$id === undefined) { return ''; }
+    const propertyName = FormatHelpers.toPascalCase(getUniquePropertyName(ctx.model, DefaultPropertyNames.additionalProperties), { transform: pascalCaseTransformMerge });
+    let formattedName = FormatHelpers.toPascalCase(ctx.model.$id + propertyName, { transform: pascalCaseTransformMerge });
+    if (ctx.reservedKeywordCallback !== undefined && ctx.reservedKeywordCallback(formattedName)) {
+      formattedName = FormatHelpers.toPascalCase(`reserved_${formattedName}`, { transform: pascalCaseTransformMerge });
+    }
+    return formattedName;
+  },
   enumMember: (name: string | undefined, ctx) => {
     if (name === undefined) { return ''; }
     const formattedName = FormatHelpers.toPascalCase(FormatHelpers.replaceSpecialCharacters(name.toString()), { transform: pascalCaseTransformMerge });
@@ -112,28 +123,8 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
     return isReservedRustKeyword(name);
   }
 
-  isPolymorphic(inputModel: CommonInputModel): boolean {
-    let result = false;
-    if (inputModel.originalInput.allOf || inputModel.originalInput.anyOf || inputModel.originalInput.oneOf) {
-      result = true;
-    }
-    if (typeof (inputModel.originalInput.properties) === 'object') {
-      const properties = inputModel.originalInput.properties as { [key: string]: Draft4Schema | Draft6Schema | Draft7Schema | AsyncapiV2Schema | OpenapiV3Schema | SwaggerV2Schema };
-      for (const [fieldName, field] of Object.entries(properties)) {
-        if (field.allOf || field.anyOf || field.oneOf) {
-          result = true;
-          Logger.warn(UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING(fieldName));
-          result = true;
-        }
-      }
-    }
-    return result;
-  }
-
   render(model: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const kind = TypeHelpers.extractKind(model);
-    // sanity-check and warn about unstable polymorphism
-    this.isPolymorphic(inputModel);
     switch (kind) {
     case ModelKind.UNION:
       return this.renderEnum(model, inputModel);
@@ -175,8 +166,9 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
    * @param options to use for rendering full output
    */
   public async generateCompleteModels(input: Record<string, unknown> | CommonInputModel, options: RustRenderCompleteModelOptions): Promise<RustOutputModel[]> {
+    Logger.info('Generating models from options: ', options);
     const inputModel = input instanceof CommonInputModel ? input : await this.process(input);
-    const renders = Object.values(inputModel.models).map(async (model) => {
+    const modules = await Promise.all(Object.values(inputModel.models).map(async (model) => {
       const renderedOutput = await this.renderCompleteModel(model, inputModel);
       return RustOutputModel.toOutputModel({
         fileName: renderedOutput.fileName,
@@ -186,8 +178,8 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
         model,
         inputModel
       });
-    });
-    return Promise.all(renders);
+    }));
+    return Promise.all(modules);
   }
 
   /**
@@ -232,6 +224,8 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
         }
         return accumulator;
       }
+      case RustDependencyType.struct:
+        return accumulator;
       default:
         return accumulator;
       }

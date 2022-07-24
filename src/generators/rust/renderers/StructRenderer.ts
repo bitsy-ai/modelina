@@ -1,6 +1,5 @@
 import { RustRenderer, RustRenderFieldTypeOptions } from '../RustRenderer';
 import { FieldType, StructPreset } from '../RustPreset';
-
 /**
  * Renderer for Rust's `struct` type
  * 
@@ -45,11 +44,13 @@ export const RUST_DEFAULT_STRUCT_PRESET: StructPreset<StructRenderer> = {
   field({ fieldName, field, renderer, type, required }) {
     const outFieldName = renderer.nameField(fieldName, field);
     const options = { originalFieldName: fieldName, required } as RustRenderFieldTypeOptions;
-    const macro = renderer.renderFieldMacro(options);
+
     let fieldType = renderer.renderType(field, options);
+    let macro = renderer.renderFieldMacro(options);
     if (type === FieldType.additionalProperty || type === FieldType.patternProperties) {
-      console.log('*** field.type', field.type);
-      fieldType = `std::collections::HashMap<String, ${renderer.toRustType(field.type, field, options)}>`;
+      options.originalFieldName = 'additionalProperty';
+      macro = renderer.renderFieldMacro(options);
+      fieldType = renderer.toRustType(type, field, options);
     }
     return `${macro}
 pub ${outFieldName}: ${fieldType},`;

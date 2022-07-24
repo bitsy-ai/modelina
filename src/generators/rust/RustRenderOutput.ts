@@ -2,7 +2,8 @@ import { CommonModel, RenderOutput } from '../../models';
 
 export enum RustDependencyType {
   tuple,
-  struct
+  struct,
+  generic
 }
 
 /**

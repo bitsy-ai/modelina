@@ -1,6 +1,5 @@
 import { RustGenerator } from '../../../src/generators';
 import { Logger } from '../../../src/utils/LoggingInterface';
-import { UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING } from '../../../src/generators/rust/Constants';
 describe('RustGenerator', () => {
   let generator: RustGenerator;
   beforeEach(() => {
@@ -92,7 +91,7 @@ pub struct ReservedSelf {
     expect(structModel.result).toEqual(expected);
   });
 
-  it('should log warning about polymorphic models', async () => {
+  it('should render polymorphic model enum', async () => {
     jest.spyOn(Logger, 'warn');
 
     const doc = {
@@ -116,7 +115,6 @@ pub struct Address {
   pub members: Box<crate::Members>,
 }`;
     expect(structModel.result).toEqual(expected);
-    expect(Logger.warn).toBeCalledWith(UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING('members'));
   });
 
   test('serde should perserve original field name/case', async () => {
@@ -158,18 +156,10 @@ pub struct Address {
         city: { type: 'string', description: 'City description' },
         state: { type: 'string' },
         house_number: { type: 'number' },
-        members: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }], },
         array_type: { type: 'array', items: { type: 'string' } },
       },
       required: ['street_name', 'city', 'state', 'house_number', 'array_type'],
-      additionalProperties: {
-        type: 'string'
-      },
-      patternProperties: {
-        '^S(.?*)test&': {
-          type: 'string'
-        }
-      },
+      additionalProperties: false,
     };
     const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -182,14 +172,8 @@ pub struct Address {
   pub state: String,
   #[serde(rename = "house_number")]
   pub house_number: f64,
-  #[serde(rename = "members", skip_serializing_if = "Option::is_none")]
-  pub members: Option<Box<crate::Members>>,
   #[serde(rename = "array_type")]
   pub array_type: Vec<String>,
-  #[serde(rename = "additionalProperties")]
-  pub additional_properties: std::collections::HashMap<String, String>,
-  #[serde(rename = "^S(.?*)test&PatternProperties")]
-  pub s_test_pattern_properties: std::collections::HashMap<String, String>,
 }`;
 
     const inputModel = await generator.process(doc);
@@ -197,19 +181,29 @@ pub struct Address {
 
     let structModel = await generator.renderStruct(model, inputModel);
     expect(structModel.result).toEqual(expected);
-    expect(structModel.dependencies).toEqual([]);
+    expect(structModel.rustModuleDependencies).toEqual([]);
 
     structModel = await generator.render(model, inputModel);
     expect(structModel.result).toEqual(expected);
-    expect(structModel.dependencies).toEqual([]);
+    expect(structModel.rustModuleDependencies).toEqual([]);
   });
-  test('should render `struct` with module-level tuple dependency', async () => {
+
+  test('should render `struct` with tuple dependency', async () => {
     const doc = {
       $id: '_address',
       type: 'object',
+      definitions: {
+        NestedTest: {
+          type: 'object', $id: 'NestedTest', properties: { stringProp: { type: 'string' } }
+        }
+      },
       properties: {
         street_name: { type: 'string' },
-        tuple_type: { type: 'array', items: [{ type: 'string' }, { type: 'number' }] },
+        tuple_type: {
+          type: 'array', items: [{ type: 'string' }, { type: 'number' }, {
+            $ref: '#/definitions/NestedTest'
+          },]
+        },
       },
       required: ['street_name'],
       additionalProperties: false
@@ -225,7 +219,7 @@ pub struct Address {
 
     const expectedModule = `// AddressTupleType represents field tuple_type from _address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
-pub struct AddressTupleType(String, f64);
+pub struct AddressTupleType(String, f64, Box<crate::NestedTest>);
 // Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
@@ -296,7 +290,7 @@ pub enum States {
 }`;
     const enumModel = await generator.renderEnum(model, inputModel);
     expect(enumModel.result).toEqual(expected);
-    expect(enumModel.dependencies).toEqual([]);
+    expect(enumModel.rustModuleDependencies).toEqual([]);
 
     const module = await generator.render(model, inputModel);
     expect(module.result).toEqual(enumModel.result);
@@ -333,4 +327,102 @@ pub struct Address {
     const module = await generator.renderCompleteModel(model, inputModel);
     expect(module.result).toEqual(expectedStruct);
   });
+
+  test('should render `struct` with additional properties of string type', async () => {
+    const doc = {
+      $id: '_address',
+      type: 'object',
+      properties: {
+        street_name: { type: 'string' },
+      },
+      required: ['street_name'],
+      additionalProperties: {
+        type: 'string'
+      }
+    };
+    const expected = `// Address represents a Address model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Address {
+  #[serde(rename = "street_name")]
+  pub street_name: String,
+  #[serde(rename = "additionalProperty")]
+  pub address_additional_properties: Option<std::collections::HashMap<String, String>>,
+}`;
+
+    const inputModel = await generator.process(doc);
+    const model = inputModel.models['_address'];
+
+    let structModel = await generator.renderStruct(model, inputModel);
+    expect(structModel.result).toEqual(expected);
+    expect(structModel.rustModuleDependencies).toEqual([]);
+
+    structModel = await generator.render(model, inputModel);
+    expect(structModel.result).toEqual(expected);
+    expect(structModel.rustModuleDependencies).toEqual([]);
+  });
+
+  test('should render `struct` with additional properties of integer type', async () => {
+    const doc = {
+      $id: '_address',
+      type: 'object',
+      properties: {
+        street_name: { type: 'string' },
+      },
+      required: ['street_name'],
+      additionalProperties: {
+        type: 'integer'
+      }
+    };
+    const expected = `// Address represents a Address model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Address {
+  #[serde(rename = "street_name")]
+  pub street_name: String,
+  #[serde(rename = "additionalProperty")]
+  pub address_additional_properties: Option<std::collections::HashMap<String, i32>>,
+}`;
+
+    const inputModel = await generator.process(doc);
+    const model = inputModel.models['_address'];
+
+    let structModel = await generator.renderStruct(model, inputModel);
+    expect(structModel.result).toEqual(expected);
+    expect(structModel.dependencies).toEqual([]);
+
+    structModel = await generator.render(model, inputModel);
+    expect(structModel.result).toEqual(expected);
+    expect(structModel.dependencies).toEqual([]);
+  });
+
+  test('should render `struct` with additional properties of complex type', async () => {
+    const doc = {
+      $id: '_address',
+      type: 'object',
+      properties: {
+        street_name: { type: 'string' },
+      },
+      required: ['street_name'],
+      additionalProperties: true
+    };
+    const expected = `// Address represents a Address model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Address {
+  #[serde(rename = "street_name")]
+  pub street_name: String,
+  #[serde(rename = "additionalProperty")]
+  pub address_additional_properties: Option<std::collections::HashMap<String, serde_json::Value>>,
+}`;
+
+    const inputModel = await generator.process(doc);
+    const model = inputModel.models['_address'];
+
+    let structModel = await generator.renderStruct(model, inputModel);
+    expect(structModel.result).toEqual(expected);
+    expect(structModel.dependencies).toEqual([]);
+
+    structModel = await generator.render(model, inputModel);
+    expect(structModel.result).toEqual(expected);
+    expect(structModel.dependencies).toEqual([]);
+  });
 });
+

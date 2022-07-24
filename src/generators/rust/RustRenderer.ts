@@ -54,10 +54,7 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     }
 
     if (this.model.additionalProperties !== undefined) {
-      console.log('***additionalProperties', this.model.additionalProperties);
-      console.log('***iputModel', this.model.originalInput);
-
-      const propertyName = getUniquePropertyName(this.model, DefaultPropertyNames.additionalProperties);
+      const propertyName = this.additionalPropertyTypeName(this.model,);
       const additionalProperty = await this.runFieldPreset(propertyName, this.model.additionalProperties, FieldType.additionalProperty);
       content.push(additionalProperty);
     }
@@ -115,6 +112,14 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
   }
 
   /**
+   * Renders the type name for this model's additionalProperties
+   * 
+   */
+  additionalPropertyTypeName(field: CommonModel): string {
+    return this.options?.namingConvention?.additionalPropertyType ? this.options.namingConvention.additionalPropertyType({ model: field, inputModel: this.inputModel, reservedKeywordCallback: isReservedRustKeyword }) : '';
+  }
+
+  /**
    * Returns true if field is a tuple
    * @param field
    * @returns booolean
@@ -132,6 +137,12 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     return field.items !== undefined && !Array.isArray(field.items);
   }
 
+  isUniformType(field: CommonModel): boolean {
+    // field.type is a single type, or array of the same type
+    const testType = Array.isArray(field.type) ? field.type[0] : field.type;
+    return !Array.isArray(field.type) || (Array.isArray(field.type) && field.type.every(v => v === testType));
+  }
+
   /**
    * Returns true if field is required
    * Rust uses Option enum to represent optional values
@@ -139,7 +150,6 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
    * @param originalFieldName 
    * @returns 
    */
-
   isFieldRequired(originalFieldName: string): boolean {
     return this.model.isRequired(originalFieldName) || this.model.required?.map(x => this.nameField(x)).includes(originalFieldName) || false;
   }
@@ -151,11 +161,15 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     const required = (type === FieldType.additionalProperty || type === FieldType.patternProperties) ? true : this.isFieldRequired(fieldName);
     return this.runPreset('field', { fieldName, field, type, required });
   }
+
+  refToRustType(model: CommonModel): string {
+    const formattedRef = this.nameType(model.$ref);
+    return `Box<crate::${formattedRef}>`;
+  }
   renderType(model: CommonModel, options: RustRenderFieldTypeOptions): string {
     let fieldType = '';
     if (model.$ref !== undefined) {
-      const formattedRef = this.nameType(model.$ref);
-      fieldType = `Box<crate::${formattedRef}>`;
+      fieldType = this.toRustType('$ref', model, options);
     } else {
       fieldType = this.toRustType(model?.type, model, options);
     }
@@ -176,14 +190,25 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     return `${prefix}${suffix}`;
   }
 
-  /* eslint-disable sonarjs/no-duplicate-string */
-  toRustType(type: undefined | string | string[], field: CommonModel, options: RustRenderFieldTypeOptions): string {
-    // Box is used here to allocate heap memory, while only the pointer remains on the stack.
-    // Box allows us to support circular type references.
-    // See chapter 4 of Rust docs for more information about the Stack and Heap in the context of memory ownership
-    // https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html#the-stack-and-the-heap
+  /**
+   * 
+   * Outputs a native rust type
+   * 
+   * Box is used here to allocate heap memory, while only the pointer remains on the stack.
+   * Box allows us to support circular type references.
+   * See chapter 4 of Rust docs for more information about the Stack and Heap in the context of memory ownership
+  * https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html#the-stack-and-the-heap
 
+   * 
+   * @param type 
+   * @param field 
+   * @param options 
+   * @returns 
+   */
+  toRustType(type: undefined | string | string[] | FieldType, field: CommonModel, options: RustRenderFieldTypeOptions): string {
     switch (type) {
+    case '$ref':
+      return this.refToRustType(field);
     case 'string':
       return 'String';
     case 'int32':
@@ -215,6 +240,13 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
       Logger.warn(UNSTABLE_FIELD_IMPLEMENTATION_WARNING(options.originalFieldName));
       return 'serde_json::Value';
     }
+    case FieldType.additionalProperty:
+      if (this.isUniformType(field)) {
+        return `Option<std::collections::HashMap<String, ${this.toRustType(field.type, field, options)}>>`;
+      }
+      // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
+      return 'Option<std::collections::HashMap<String, serde_json::Value>>';
+
     case 'object':
     default: {
       const fieldName = this.nameType(options.originalFieldName);

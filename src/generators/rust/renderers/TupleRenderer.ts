@@ -15,7 +15,12 @@ export class TupleRenderer extends RustRenderer {
 
   renderTupleFieldTypes(field: CommonModel, options: RustRenderFieldTypeOptions): string[] {
     if (field.items && Array.isArray(field.items)) {
-      return field.items.map((item) => this.toRustType(item.type, item, options));
+      return field.items.map((item) => {
+        if (item.$ref !== undefined) {
+          return this.toRustType('$ref', item, options);
+        }
+        return this.toRustType(item.type, item, options);
+      });
     }
     return [''];
   }
