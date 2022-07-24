@@ -70,6 +70,17 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
   }
 
   /**
+   * Renders the name of a module
+   * @param name 
+   * @param model 
+   * @returns 
+   */
+  nameModule(name: string | undefined, model?: CommonModel): string {
+    return this.options?.namingConvention?.module
+      ? this.options.namingConvention.module(name, { model: model || this.model, inputModel: this.inputModel, reservedKeywordCallback: isReservedRustKeyword })
+      : name || '';
+  }
+  /**
    * Renders the name of a type based on provided generator option naming convention type function.
    * 
    * This is used to render names of models and then later used if that class is referenced from other models.

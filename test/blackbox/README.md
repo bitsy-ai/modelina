@@ -25,5 +25,6 @@ If you want to run the BlackBox tests locally, you have to install a couple of d
 - To to run the `TypeScript` BlackBox tests, you need to have TypeScript installed globally - `npm install -g typescript`.
 - To to run the `C#` BlackBox tests, you need to have C# compiler installed globally. - https://www.mono-project.com/download/stable/
 - To to run the `Go` BlackBox tests, you need to have GoLang installed - https://golang.org/doc/install
+- To to run the `Rust` BlackBox tests, you need to have Rust installed - https://rustup.rs/
 
 By default, the BlackBox tests are not run with the regular `npm run test`, but can be run with `npm run test:blackbox`.
