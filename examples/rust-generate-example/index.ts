@@ -1,4 +1,5 @@
 import { RustFileGenerator, RustRenderCompleteModelOptions } from '../../src';
+import * as path from 'path';
 const AsyncAPIDocument = {
   asyncapi: '2.4.0',
   info: {
@@ -67,8 +68,9 @@ const AsyncAPIDocument = {
 
 export async function generate(): Promise<void> {
   const generator = new RustFileGenerator();
+  const outDir = path.join(__dirname, "output");
   const renderModelOptions: RustRenderCompleteModelOptions = { packageName: 'rust-generate-example' };
-  const models = await generator.generateToFiles(AsyncAPIDocument, './output', renderModelOptions);
+  const models = await generator.generateToFiles(AsyncAPIDocument, outDir, renderModelOptions);
   for (const model of models) {
     console.log(model.result);
   }

@@ -20,6 +20,7 @@ export interface FieldArgs {
 
 export interface TupleArgs {
     fieldName: string;
+    originalFieldName: String;
     field: CommonModel;
     parent: CommonModel;
 }

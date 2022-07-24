@@ -9,8 +9,8 @@ import { CommonModel } from 'models';
  * @extends RustRenderer
  */
 export class TupleRenderer extends RustRenderer {
-  public async defaultSelf(): Promise<string> {
-    return await this.renderTuples();
+  public defaultSelf(): string {
+    return '';
   }
 
   renderTupleFieldTypes(field: CommonModel, options: RustRenderFieldTypeOptions): string[] {
@@ -29,16 +29,15 @@ export const RUST_DEFAULT_TUPLE_PRESET: TuplePreset<TupleRenderer> = {
     return renderer.defaultSelf();
   },
 
-  tuple({ fieldName, field, renderer, parent }) {
+  tuple({ fieldName, originalFieldName, field, renderer, parent }) {
     const options: RustRenderFieldTypeOptions = { required: true, originalFieldName: fieldName };
 
-    const formattedName = renderer.nameTupleType(options);
-    const doc = renderer.renderComments(`${formattedName} represents field ${fieldName} from ${parent.$id} model.`);
+    const doc = renderer.renderComments(`${fieldName} represents field ${originalFieldName} from ${parent.$id} model.`);
     const fields = renderer.renderTupleFieldTypes(field, options);
 
     return `${doc}
 ${renderer.renderTypeMacro()}
-pub struct ${formattedName}(${fields.join(', ')});
+pub struct ${fieldName}(${fields.join(', ')});
 `;
   }
 };

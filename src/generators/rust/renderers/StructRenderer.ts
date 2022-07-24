@@ -8,7 +8,6 @@ import { FieldType, StructPreset } from '../RustPreset';
  */
 export class StructRenderer extends RustRenderer {
   public async defaultSelf(): Promise<string> {
-    // render struct fields for top-level object
     const fieldContent = [
       await this.renderFields(),
       await this.runAdditionalContentPreset()

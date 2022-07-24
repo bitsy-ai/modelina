@@ -148,12 +148,6 @@ describe('RustRenderer', () => {
       });
       expect(renderer.renderType(model, { originalFieldName: '', required: false, } as RustRenderFieldTypeOptions)).toEqual('Option<Box<crate::models::AnonymousSchema1>>');
     });
-    test('Should render required boxed ref in PascalCase', () => {
-      const model = CommonModel.toCommonModel({
-        $ref: '<anonymous-schema-1>'
-      });
-      expect(renderer.renderType(model, { originalFieldName: '', required: true, } as RustRenderFieldTypeOptions)).toEqual('Box<crate::models::AnonymousSchema1>');
-    });
     test('Should render anonymous object as boxed ref to struct in the same module', () => {
       const model = CommonModel.toCommonModel({
         $id: 'MyModel',
@@ -168,7 +162,26 @@ describe('RustRenderer', () => {
           }
         }
       });
-      expect(renderer.renderType(model, { originalFieldName: 'anonymousObject', required: true, })).toEqual('Box<AnonymousObject>');
+      expect(renderer.renderType(model, { originalFieldName: 'anonymousObject', required: true, })).toEqual('Box<crate::models::AnonymousObject>');
+    });
+
+    test('Should render $ref with $id as reference to imported model', () => {
+      const model = CommonModel.toCommonModel({
+        $id: 'MyModel',
+        type: 'object',
+        properties: {
+          Person: {
+            $id: 'Person',
+            type: 'object',
+            description: 'An object without a $ref to a component schema',
+            properties: {
+              street_name: { type: 'string' },
+            }
+          }
+        },
+        additionalProperties: false
+      });
+      expect(renderer.renderType(model, { originalFieldName: 'Person', required: true, })).toEqual('Box<crate::models::Person>');
     });
   });
 });

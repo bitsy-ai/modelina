@@ -113,7 +113,7 @@ pub struct ReservedSelf {
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
   #[serde(rename = "members")]
-  pub members: serde_json::Value,
+  pub members: Box<crate::models::Members>,
 }`;
     expect(structModel.result).toEqual(expected);
     expect(Logger.warn).toBeCalledWith(UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING('members'));
@@ -183,7 +183,7 @@ pub struct Address {
   #[serde(rename = "house_number")]
   pub house_number: f64,
   #[serde(rename = "members", skip_serializing_if = "Option::is_none")]
-  pub members: Option<serde_json::Value>,
+  pub members: Option<Box<crate::models::Members>>,
   #[serde(rename = "array_type")]
   pub array_type: Vec<String>,
   #[serde(rename = "additionalProperties")]
@@ -203,7 +203,7 @@ pub struct Address {
     expect(structModel.result).toEqual(expected);
     expect(structModel.dependencies).toEqual([]);
   });
-  test('should render `struct` with anonymous tuple dependency', async () => {
+  test('should render `struct` with module-level tuple dependency', async () => {
     const doc = {
       $id: '_address',
       type: 'object',
@@ -226,7 +226,6 @@ pub struct Address {
     const expectedModule = `// AddressTupleType represents field tuple_type from _address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct AddressTupleType(String, f64);
-
 // Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
@@ -241,7 +240,7 @@ pub struct Address {
 
     const structModel = await generator.renderStruct(model, inputModel);
     expect(structModel.result).toEqual(expectedStruct);
-    expect(structModel.dependencies).toEqual(['AddressTupleType']);
+    expect(structModel.rustModuleDependencies.length).toEqual(1);
 
     const module = await generator.renderCompleteModel(model, inputModel);
     expect(module.result).toEqual(expectedModule);
@@ -301,5 +300,37 @@ pub enum States {
 
     const module = await generator.render(model, inputModel);
     expect(module.result).toEqual(enumModel.result);
+  });
+
+  test('should render `struct` with module-level struct dependency', async () => {
+    const doc = {
+      $id: '_address',
+      type: 'object',
+      properties: {
+        nested_object: {
+          type: 'object',
+          properties: {
+            street_name: { type: 'string' },
+          },
+        }
+      },
+      additionalProperties: false
+    };
+
+    const expectedStruct = `// Address represents a Address model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Address {
+  #[serde(rename = "nested_object", skip_serializing_if = "Option::is_none")]
+  pub nested_object: Option<Box<crate::models::NestedObject>>,
+}`;
+    const inputModel = await generator.process(doc);
+    const model = inputModel.models['_address'];
+
+    const structModel = await generator.renderStruct(model, inputModel);
+    expect(structModel.result).toEqual(expectedStruct);
+    expect(structModel.rustModuleDependencies.length).toEqual(0);
+
+    const module = await generator.renderCompleteModel(model, inputModel);
+    expect(module.result).toEqual(expectedStruct);
   });
 });

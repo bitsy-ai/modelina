@@ -7,6 +7,7 @@ describe('Should be able to render Rust Models', () => {
   });
   test('and should log expected output to console', async () => {
     await generate();
+    // generate is getting called twice? This should be 6
     expect(spy.mock.calls.length).toEqual(12);
     expect(spy.mock.calls).toMatchSnapshot();
   });

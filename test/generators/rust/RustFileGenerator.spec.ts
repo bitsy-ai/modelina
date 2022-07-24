@@ -16,7 +16,14 @@ describe('TypeScriptFileGenerator', () => {
           $id: 'CustomEnum',
           type: 'string',
           enum: ['Texas', 'Alabama', 'California'],
-        }
+        },
+        street_name: { type: 'string' },
+        city: { type: 'string', description: 'City description' },
+        state: { type: 'string' },
+        house_number: { type: 'number' },
+        members: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }], },
+        array_type: { type: 'array', items: { type: 'string' } },
+        required: ['street_name', 'city', 'state', 'house_number', 'array_type'],
       }
     };
     const renderModelOptions: RustRenderCompleteModelOptions = { packageName: 'my-test-package' };

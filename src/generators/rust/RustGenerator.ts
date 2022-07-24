@@ -2,7 +2,7 @@ import { AbstractGenerator, CommonGeneratorOptions, defaultGeneratorOptions } fr
 import { snakeCase } from 'change-case';
 import { Logger } from '../../utils/LoggingInterface';
 import { TypeHelpers, ModelKind, FormatHelpers } from '../../helpers';
-import { CommonModel, CommonInputModel, RenderOutput, Draft4Schema, Draft6Schema, Draft7Schema, OpenapiV3Schema, AsyncapiV2Schema, SwaggerV2Schema, } from '../../models';
+import { CommonModel, CommonInputModel, Draft4Schema, Draft6Schema, Draft7Schema, OpenapiV3Schema, AsyncapiV2Schema, SwaggerV2Schema, } from '../../models';
 import { pascalCaseTransformMerge } from 'change-case';
 
 import { RustPreset, RUST_DEFAULT_PRESET } from './RustPreset';
@@ -10,6 +10,7 @@ import { StructRenderer } from './renderers/StructRenderer';
 import { TupleRenderer } from './renderers/TupleRenderer';
 import { EnumRenderer } from './renderers/EnumRenderer';
 import { isReservedRustKeyword, UNSTABLE_POLYMORPHIC_IMPLEMENTATION_WARNING } from './Constants';
+import { RustRenderOutput, RustDependency, RustDependencyType } from './RustRenderOutput';
 
 /**
  * The Rust naming convention type
@@ -44,10 +45,10 @@ export const RustNamingConventionImplementation: RustNamingConvention = {
 };
 
 /**
- * Rust-specific RenderOutput class
- * Adds module-scoped struct and enum dependency containers to base RenderOutput class
+ * Rust-specific RustRenderOutput class
+ * Adds module-scoped struct and enum dependency containers to base RustRenderOutput class
  */
-export class RustRenderOutput { }
+export class RustRustRenderOutput { }
 
 export interface RustOptions extends CommonGeneratorOptions<RustPreset> {
   namingConvention?: RustNamingConvention;
@@ -90,22 +91,18 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
     return result;
   }
 
-  render(model: CommonModel, inputModel: CommonInputModel): Promise<RenderOutput> {
+  render(model: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const kind = TypeHelpers.extractKind(model);
+    // sanity-check and warn about unstable polymorphism
+    this.isPolymorphic(inputModel);
     switch (kind) {
-      case ModelKind.UNION:
-        // sanity-check and warn about unstable polymorphism implementation
-        this.isPolymorphic(inputModel);
-        return this.renderEnum(model, inputModel);
       case ModelKind.OBJECT:
-        // sanity-check and warn about unstable polymorphism implementation
-        this.isPolymorphic(inputModel);
         return this.renderStruct(model, inputModel);
       case ModelKind.ENUM:
         return this.renderEnum(model, inputModel);
     }
     Logger.warn(`Rust generator, cannot generate this type of model, ${model.$id}`);
-    return Promise.resolve(RenderOutput.toRenderOutput({ result: '', renderedName: '', dependencies: [] }));
+    return Promise.resolve(RustRenderOutput.toRustRenderOutput({ result: '', renderedName: '', rustModuleDependencies: [] }));
   }
 
   /**
@@ -115,50 +112,60 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
    * @param inputModel
    * @param options
    */
-  async renderCompleteModel(model: CommonModel, inputModel: CommonInputModel): Promise<RenderOutput> {
+  async renderCompleteModel(model: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const outputModel = await this.render(model, inputModel);
 
-    let modelDependencies = '';
-    if (outputModel.dependencies.length > 0) {
-      const outputTuples = await this.renderTuples(model, inputModel);
-      modelDependencies += outputTuples.result;
-      const outputStructs = await this.renderAnonymousObject(model, inputModel);
-      modelDependencies += outputStructs.result;
+    let rustModuleDependencies = '';
+    if (outputModel.rustModuleDependencies.length > 0) {
+      const dependencyOutputs: RustRenderOutput[] = await this.renderDependencies(model, inputModel, outputModel.rustModuleDependencies, []);
+      rustModuleDependencies += dependencyOutputs.map(o => o.result).join('\n');
     }
-    const outputContent = `${modelDependencies}
-${outputModel.result}`;
-    return RenderOutput.toRenderOutput({ result: outputContent, renderedName: outputModel.renderedName, dependencies: outputModel.dependencies });
+    const outputContent = `${rustModuleDependencies}${outputModel.result}`;
+    return RustRenderOutput.toRustRenderOutput({ result: outputContent, renderedName: outputModel.renderedName, rustModuleDependencies: outputModel.rustModuleDependencies });
   }
 
   /**
-   * To support complex nested object structure in Rust, each object must be defined by struct
-   * this method handles "anonymous" objects - complex objects without a $ref to schema
+   * Render all module-level dependencies
    */
-  async renderAnonymousObject(model: CommonModel, inputModel: CommonInputModel): Promise<RenderOutput> {
-
+  async renderDependencies(model: CommonModel, inputModel: CommonInputModel, dependencies: RustDependency[], accumulator: RustRenderOutput[]): Promise<RustRenderOutput[]> {
+    await Promise.all(dependencies.map(async (dependency: RustDependency) => {
+      switch (dependency.type) {
+        case RustDependencyType.tuple: {
+          const { parent, fieldName, originalFieldName, field } = dependency;
+          const result = await this.renderTuple(fieldName, originalFieldName, field, parent, inputModel);
+          accumulator.push(result);
+          if (result.rustModuleDependencies.length > 0) {
+            await this.renderDependencies(dependency.field, inputModel, result.rustModuleDependencies, accumulator);
+          }
+          return accumulator;
+        }
+        default:
+          return accumulator;
+      }
+    }));
+    return accumulator;
   }
 
-  async renderTuples(model: CommonModel, inputModel: CommonInputModel): Promise<RenderOutput> {
+  async renderTuple(fieldName: string, originalFieldName: string, field: CommonModel, parent: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const presets = this.getPresets('tuple');
-    const renderer = new TupleRenderer(this.options, this, presets, model, inputModel);
-    const result = await renderer.runSelfPreset();
-    const renderedName = renderer.nameType(model.$id, model);
-    return RenderOutput.toRenderOutput({ result, renderedName, dependencies: renderer.dependencies });
+    const renderer = new TupleRenderer(this.options, this, presets, parent, inputModel);
+    const result = await renderer.runTuplePreset(fieldName, originalFieldName, field, parent);
+    return RustRenderOutput.toRustRenderOutput({ result, renderedName: fieldName, rustModuleDependencies: renderer.rustModuleDependencies });
   }
 
-  async renderEnum(model: CommonModel, inputModel: CommonInputModel): Promise<RenderOutput> {
+  async renderEnum(model: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const presets = this.getPresets('enum');
     const renderer = new EnumRenderer(this.options, this, presets, model, inputModel);
     const result = await renderer.runSelfPreset();
     const renderedName = renderer.nameType(model.$id, model);
-    return RenderOutput.toRenderOutput({ result, renderedName, dependencies: renderer.dependencies });
+    return RustRenderOutput.toRustRenderOutput({ result, renderedName, rustModuleDependencies: renderer.rustModuleDependencies });
   }
 
-  async renderStruct(model: CommonModel, inputModel: CommonInputModel): Promise<RenderOutput> {
+  async renderStruct(model: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const presets = this.getPresets('struct');
     const renderer = new StructRenderer(this.options, this, presets, model, inputModel);
     const result = await renderer.runSelfPreset();
     const renderedName = renderer.nameType(model.$id, model);
-    return RenderOutput.toRenderOutput({ result, renderedName, dependencies: renderer.dependencies });
+    return RustRenderOutput.toRustRenderOutput({ result, renderedName, rustModuleDependencies: renderer.rustModuleDependencies });
   }
 }
