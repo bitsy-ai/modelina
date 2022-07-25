@@ -1,5 +1,5 @@
 import { CommonInputModel, CommonModel, RustGenerator } from '../../../src';
-import { RustRenderer, RustRenderFieldTypeOptions } from '../../../src/generators/rust/RustRenderer';
+import { RustRenderer } from '../../../src/generators/rust/RustRenderer';
 
 class MockRustRenderer extends RustRenderer {
 

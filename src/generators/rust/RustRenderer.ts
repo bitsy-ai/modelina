@@ -9,15 +9,6 @@ import { Logger } from '../../utils';
 import { RustDependency, RustDependencyType } from './RustRenderOutput';
 
 /**
- * Options for rendering a Rust type
- */
-export type RustRenderFieldTypeOptions = {
-  originalFieldName: string
-  required: boolean
-  field: CommonModel
-};
-
-/**
  * Common renderer for Rust types
  * 
  * @extends AbstractRenderer`
@@ -190,54 +181,54 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
    */
   toRustType(type: undefined | string | string[] | FieldType, field: CommonModel, originalFieldName: string): string {
     switch (type) {
-    case '$ref':
-      return this.refToRustType(field);
-    case 'string':
-      return 'String';
-    case 'int32':
-    case 'integer':
-      return 'i32';
-    case 'int64':
-    case 'long':
-      return 'i64';
-    case 'number':
-      return 'f64';
-    case 'boolean':
-      return 'bool';
-    case 'array': {
-      // handle single field.item where type is uniform
-      if (this.isVec(field)) {
-        const items = field.items as CommonModel;
-        const innerType = this.renderType(items, originalFieldName, true);
-        return `Vec<${innerType}>`;
-        // handle tuple of heterogenous types by generating a tuple struct
-      } else if (this.isTuple(field)) {
-        const fieldName = this.nameTupleType(originalFieldName);
-        const dependency: RustDependency = { originalFieldName, type: RustDependencyType.tuple, field, fieldName, parent: this.model };
+      case '$ref':
+        return this.refToRustType(field);
+      case 'string':
+        return 'String';
+      case 'int32':
+      case 'integer':
+        return 'i32';
+      case 'int64':
+      case 'long':
+        return 'i64';
+      case 'number':
+        return 'f64';
+      case 'boolean':
+        return 'bool';
+      case 'array': {
+        // handle single field.item where type is uniform
+        if (this.isVec(field)) {
+          const items = field.items as CommonModel;
+          const innerType = this.renderType(items, originalFieldName, true);
+          return `Vec<${innerType}>`;
+          // handle tuple of heterogenous types by generating a tuple struct
+        } else if (this.isTuple(field)) {
+          const fieldName = this.nameTupleType(originalFieldName);
+          const dependency: RustDependency = { originalFieldName, type: RustDependencyType.tuple, field, fieldName, parent: this.model };
+          this.addRustDependency(dependency);
+          this.addDependency(fieldName);
+          return `Box<${fieldName}>`;
+        }
+        // we should never reach this return statement, but log a warning if we do.
+        // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
+        Logger.warn(`Unsure how to handle ${originalFieldName}, so you must implement serialization (e.g From<serde_json::Value<T>>) - please open an issue with your schema and example data.`);
+        return 'serde_json::Value';
+      }
+      case FieldType.additionalProperty:
+        if (this.isUniformType(field)) {
+          return `Option<std::collections::HashMap<String, ${this.toRustType(field.type, field, originalFieldName)}>>`;
+        }
+        // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
+        return 'Option<std::collections::HashMap<String, serde_json::Value>>';
+
+      case 'object':
+      default: {
+        const fieldName = this.nameType(originalFieldName);
+        const dependency: RustDependency = { originalFieldName, type: RustDependencyType.struct, field, fieldName, parent: this.model };
         this.addRustDependency(dependency);
         this.addDependency(fieldName);
-        return `Box<${fieldName}>`;
+        return `Box<crate::${fieldName}>`;
       }
-      // we should never reach this return statement, but log a warning if we do.
-      // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
-      Logger.warn(`Unsure how to handle ${originalFieldName}, so you must implement serialization (e.g From<serde_json::Value<T>>) - please open an issue with your schema and example data.`);
-      return 'serde_json::Value';
-    }
-    case FieldType.additionalProperty:
-      if (this.isUniformType(field)) {
-        return `Option<std::collections::HashMap<String, ${this.toRustType(field.type, field, originalFieldName)}>>`;
-      }
-      // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
-      return 'Option<std::collections::HashMap<String, serde_json::Value>>';
-
-    case 'object':
-    default: {
-      const fieldName = this.nameType(originalFieldName);
-      const dependency: RustDependency = { originalFieldName, type: RustDependencyType.struct, field, fieldName, parent: this.model };
-      this.addRustDependency(dependency);
-      this.addDependency(fieldName);
-      return `Box<crate::${fieldName}>`;
-    }
     }
   }
 }
