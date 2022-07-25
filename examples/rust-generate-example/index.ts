@@ -13,5 +13,5 @@ export async function generate(): Promise<void> {
   }
 }
 if (require.main === module) {
-  generate()
+  generate();
 }

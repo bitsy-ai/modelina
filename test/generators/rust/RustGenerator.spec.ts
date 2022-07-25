@@ -448,7 +448,7 @@ pub struct Address {
     pub tuple_type: Option<Box<AddressTupleType>>,
 }`;
 
-      const expectedModule = `// AddressTupleType represents field tuple_type from _address model.
+      const expectedModules = [`// AddressTupleType represents field tuple_type from _address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct AddressTupleType(String, f64, Box<crate::NestedTest>);
 
@@ -468,7 +468,24 @@ impl Address {
             tuple_type: None,
         }
     }
-}`;
+}`,
+      `// NestedTest represents a NestedTest model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct NestedTest {
+    #[serde(rename = "stringProp", skip_serializing_if = "Option::is_none")]
+    pub string_prop: Option<String>,
+    #[serde(rename = "additionalProperties", skip_serializing_if = "Option::is_none")]
+    pub additional_properties: Option<std::collections::HashMap<String, serde_json::Value>>,
+}
+
+impl NestedTest {
+    pub fn new() -> NestedTest {
+        NestedTest {
+            string_prop: None,
+            additional_properties: None,
+        }
+    }
+}`];
 
       const inputModel = await generator.process(doc);
       const model = inputModel.models['_address'];
@@ -477,8 +494,9 @@ impl Address {
       expect(structModel.result).toEqual(expectedStruct);
       expect(structModel.rustModuleDependencies.length).toEqual(1);
 
-      const module = await generator.renderCompleteModel(model, inputModel, defaultRustOptions);
-      expect(module.result).toEqual(expectedModule);
+      const modules = await generator.generateCompleteModels(doc, defaultRustOptions);
+      expect(modules[0].result).toEqual(expectedModules[0]);
+      expect(modules[1].result).toEqual(expectedModules[1]);
     });
   });
 });

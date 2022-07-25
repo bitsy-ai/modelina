@@ -4,7 +4,7 @@ import { FormatHelpers } from '../../helpers/FormatHelpers';
 
 import { RustGenerator, RustOptions } from './RustGenerator';
 import { FieldType } from './RustPreset';
-import { isReservedRustKeyword, UNSTABLE_FIELD_IMPLEMENTATION_WARNING } from './Constants';
+import { isReservedRustKeyword } from './Constants';
 import { Logger } from '../../utils';
 import { RustDependency, RustDependencyType } from './RustRenderOutput';
 
@@ -107,14 +107,6 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
   }
 
   /**
-   * Renders the type name for this model's additionalProperties
-   * 
-   */
-  additionalPropertyTypeName(field: CommonModel): string {
-    return this.options?.namingConvention?.additionalPropertyType ? this.options.namingConvention.additionalPropertyType({ model: field, inputModel: this.inputModel, reservedKeywordCallback: isReservedRustKeyword }) : '';
-  }
-
-  /**
    * Returns true if field is a tuple
    * @param field
    * @returns booolean
@@ -152,10 +144,6 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
   runTuplePreset(fieldName: string, originalFieldName: string, field: CommonModel, parent: CommonModel): Promise<string> {
     return this.runPreset('tuple', { fieldName, originalFieldName, field, parent });
   }
-  // runFieldPreset(fieldName: string, field: CommonModel, type: FieldType = FieldType.field): Promise<string> {
-  //   const required = (type === FieldType.additionalProperty || type === FieldType.patternProperties) ? true : this.isFieldRequired(fieldName);
-  //   return this.runPreset('field', { fieldName, field, type, required });
-  // }
 
   refToRustType(model: CommonModel): string {
     const formattedRef = this.nameType(model.$ref);
@@ -232,7 +220,7 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
       }
       // we should never reach this return statement, but log a warning if we do.
       // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
-      Logger.warn(UNSTABLE_FIELD_IMPLEMENTATION_WARNING(originalFieldName));
+      Logger.warn(`Unsure how to handle ${originalFieldName}, so you must implement serialization (e.g From<serde_json::Value<T>>) - please open an issue with your schema and example data.`);
       return 'serde_json::Value';
     }
     case FieldType.additionalProperty:

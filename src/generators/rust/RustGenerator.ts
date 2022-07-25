@@ -4,7 +4,6 @@ import { Logger } from '../../utils/LoggingInterface';
 import { TypeHelpers, ModelKind, FormatHelpers } from '../../helpers';
 import { CommonModel, CommonInputModel } from '../../models';
 import { pascalCaseTransformMerge } from 'change-case';
-import { DefaultPropertyNames, getUniquePropertyName } from '../../helpers';
 
 import { RustPreset, RUST_DEFAULT_PRESET } from './RustPreset';
 import { StructRenderer } from './renderers/StructRenderer';
@@ -18,7 +17,6 @@ import { RustOutputModel } from './RustOutput';
  * The Rust naming convention type
  */
 export type RustNamingConvention = {
-  additionalPropertyType?: (ctx: { model: CommonModel, inputModel: CommonInputModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
   enumMember?: (name: string | undefined, ctx: { model: CommonModel, inputModel: CommonInputModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
   type?: (name: string | undefined, ctx: { model: CommonModel, inputModel: CommonInputModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
   field?: (name: string | undefined, ctx: { model: CommonModel, inputModel: CommonInputModel, field?: CommonModel, reservedKeywordCallback?: (name: string) => boolean }) => string;
@@ -29,15 +27,6 @@ export type RustNamingConvention = {
  * default RustNamingConvention implementation
  */
 export const RustNamingConventionImplementation: RustNamingConvention = {
-  additionalPropertyType: (ctx) => {
-    if (ctx.model.$id === undefined) { return ''; }
-    const propertyName = FormatHelpers.toPascalCase(getUniquePropertyName(ctx.model, DefaultPropertyNames.additionalProperties), { transform: pascalCaseTransformMerge });
-    let formattedName = FormatHelpers.toPascalCase(ctx.model.$id + propertyName, { transform: pascalCaseTransformMerge });
-    if (ctx.reservedKeywordCallback !== undefined && ctx.reservedKeywordCallback(formattedName)) {
-      formattedName = FormatHelpers.toPascalCase(`reserved_${formattedName}`, { transform: pascalCaseTransformMerge });
-    }
-    return formattedName;
-  },
   enumMember: (name: string | undefined, ctx) => {
     if (name === undefined) { return ''; }
     const formattedName = FormatHelpers.toPascalCase(FormatHelpers.replaceSpecialCharacters(name.toString()), { transform: pascalCaseTransformMerge });
@@ -149,7 +138,7 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustOptions> {
 
     let rustModuleDependencies = '';
     if (outputModel.rustModuleDependencies.length > 0) {
-      const dependencyOutputs: RustRenderOutput[] = await this.renderDependencies(model, inputModel, outputModel.rustModuleDependencies, []);
+      const dependencyOutputs: RustRenderOutput[] = await this.renderDependencies(model, inputModel, outputModel.rustModuleDependencies);
       rustModuleDependencies += dependencyOutputs.map(o => o.result).join('\n');
     }
     const outputContent = `${rustModuleDependencies}
@@ -213,25 +202,18 @@ ${outputModel.result}`.trim();
   /**
    * Render all module-level dependencies
    */
-  async renderDependencies(model: CommonModel, inputModel: CommonInputModel, dependencies: RustDependency[], accumulator: RustRenderOutput[]): Promise<RustRenderOutput[]> {
-    await Promise.all(dependencies.map(async (dependency: RustDependency) => {
+  async renderDependencies(model: CommonModel, inputModel: CommonInputModel, dependencies: RustDependency[]): Promise<RustRenderOutput[]> {
+    const results = await Promise.all(dependencies.map(async (dependency: RustDependency) => {
       switch (dependency.type) {
       case RustDependencyType.tuple: {
         const { parent, fieldName, originalFieldName, field } = dependency;
-        const result = await this.renderTuple(fieldName, originalFieldName, field, parent, inputModel);
-        accumulator.push(result);
-        if (result.rustModuleDependencies.length > 0) {
-          await this.renderDependencies(dependency.field, inputModel, result.rustModuleDependencies, accumulator);
-        }
-        return accumulator;
+        return await this.renderTuple(fieldName, originalFieldName, field, parent, inputModel);
       }
-      case RustDependencyType.struct:
-        return accumulator;
       default:
-        return accumulator;
+        return;
       }
     }));
-    return accumulator;
+    return results.filter((v => v !== undefined)) as RustRenderOutput[];
   }
 
   async renderTuple(fieldName: string, originalFieldName: string, field: CommonModel, parent: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
