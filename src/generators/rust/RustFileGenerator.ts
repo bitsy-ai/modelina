@@ -2,11 +2,11 @@
 import * as path from 'path';
 import { AbstractFileGenerator } from 'generators/AbstractFileGenerator';
 import { CommonInputModel } from '../../models';
-import { RustGenerator, RustRenderCompleteModelOptions } from './RustGenerator';
+import { RustGenerator, RustOptions } from './RustGenerator';
 import { FileHelpers } from '../../helpers';
 import { RustOutputModel } from './RustOutput';
 
-export class RustFileGenerator extends RustGenerator implements AbstractFileGenerator<RustRenderCompleteModelOptions> {
+export class RustFileGenerator extends RustGenerator implements AbstractFileGenerator<RustOptions> {
   public async generateSupportFiles(generatedModels: RustOutputModel[], outputDirectory: string): Promise<void> {
     const manifest = await this.renderManifest();
     let filePath = path.resolve(outputDirectory, manifest.fileName);
@@ -23,7 +23,8 @@ export class RustFileGenerator extends RustGenerator implements AbstractFileGene
    * @param outputDirectory
    * @param options 
    */
-  public async generateToFiles(input: CommonInputModel | Record<string, unknown>, outputDirectory: string, options: RustRenderCompleteModelOptions): Promise<RustOutputModel[]> {
+  public async generateToFiles(input: CommonInputModel | Record<string, unknown>, outputDirectory: string, options: RustOptions): Promise<RustOutputModel[]> {
+    this.options = { ...this.options, ...options };
     let generatedModels = await this.generateCompleteModels(input, options);
     generatedModels = generatedModels.filter(outputModel => { return outputModel.modelName !== undefined && outputModel.modelName !== ''; });
     for (const outputModel of generatedModels) {
@@ -31,7 +32,7 @@ export class RustFileGenerator extends RustGenerator implements AbstractFileGene
       await FileHelpers.writerToFileSystem(outputModel.result, filePath);
     }
 
-    if (options.renderSupportingFiles) {
+    if (this.options.renderSupportingFiles) {
       await this.generateSupportFiles(generatedModels, outputDirectory);
     }
 

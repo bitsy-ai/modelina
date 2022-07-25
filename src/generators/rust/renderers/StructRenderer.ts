@@ -1,4 +1,4 @@
-import { RustRenderer, RustRenderFieldTypeOptions } from '../RustRenderer';
+import { RustRenderer } from '../RustRenderer';
 import { FieldArgs, FieldType, RenderedFieldArgs, RenderedRustField, StructPreset } from '../RustPreset';
 import { CommonModel } from 'models';
 import { DefaultPropertyNames, getUniquePropertyName } from '../../../helpers';
@@ -10,93 +10,166 @@ import { DefaultPropertyNames, getUniquePropertyName } from '../../../helpers';
  */
 export class StructRenderer extends RustRenderer {
   public async defaultSelf(): Promise<string> {
-
-    const renderedFields: FieldArgs[] = await this.renderFields()
+    const renderedFields: RenderedFieldArgs[] = await this.renderFields();
     const renderedFieldsContent = renderedFields.map(f => f.rendered ? f.rendered.fieldContent : '');
     renderedFieldsContent.push(await this.runAdditionalContentPreset());
 
     const formattedName = this.nameType(this.model.$id);
     const doc = this.renderComments(`${formattedName} represents a ${formattedName} model.`);
 
-    const implementation: string[] = []
+    const implementation: string[] = [];
     if (this.options.renderInitializer) {
-      implementation.push(this.renderDefaultImplementation(formattedName, this.model))
+      implementation.push(this.renderNewImplementation(formattedName, this.model, renderedFields));
     }
 
     return `${doc}
 ${this.renderStructTypeMacro()}
 pub struct ${formattedName} {
-${this.indent(this.renderBlock(renderedFieldsContent))}
-}`;
-  }
-
-  functionSignature(fieldArgs: FieldArgs[]): string {
-    return fieldArgs.filter(f => f.rendered !== undefined).map(f => `${f.rendered?.fieldName}: ${f.rendered?.rustType}`).join(', ')
-  }
-
-  renderDefaultImplementation(formattedName: string, fieldArgs: FieldArgs[]): string {
-    return `
-impl Default for ${formattedName} {
-  fn default() -> ${formattedName}{
-
-  }
+${this.indent(this.renderBlock(renderedFieldsContent), 4)}
 }
-`
+${this.renderBlock(implementation)}
+`.trim();
   }
 
-  async renderFields(): Promise<FieldArgs[]> {
+  /**
+   * Renders the function signature for model
+   * 
+   * impl Model {
+   *     pub fn new(<this function>){ ... }
+   * }
+   * @param renderedFields 
+   * @returns 
+   */
+  renderNewSignature(formattedName: string, renderedFields: RenderedFieldArgs[]): string {
+    const inner = renderedFields.filter(f => f.required).map(f => {
+      return `${f.rendered.fieldName}: ${this.unbox(f.rendered.rustType)}`;
+    }).join(', ');
+    return `pub fn new(${inner}) -> ${formattedName} {`;
+  }
+  /**
+    * Renders the fields for model
+    * 
+    * impl Model {
+    *     pub fn new(...){ Model {<this function>}}
+    * }
+    * @param renderedFields 
+    * @returns 
+    */
+  renderNewFields(renderedFields: RenderedFieldArgs[]): string {
+    return this.renderBlock(renderedFields.map(f => {
+      if (f.required === false) {
+        return `${f.rendered.fieldName}: None,`;
+      } else if (this.isBoxed(f.rendered.rustType)) {
+        return `${f.rendered.fieldName}: Box::new(${f.rendered.fieldName}),`;
+      }
+      return `${f.rendered.fieldName},`;
+    }));
+  }
+
+  /***
+   * Render new() initializer implementation for model
+   */
+  renderNewImplementation(formattedName: string, model: CommonModel, renderedFields: RenderedFieldArgs[]): string {
+    const fnSignature = this.renderNewSignature(formattedName, renderedFields);
+    const fieldArgs = this.renderNewFields(renderedFields);
+    const returnSignature = `${formattedName} {`;
+    return `
+impl ${formattedName} {
+${this.indent(fnSignature, 4)}
+${this.indent(returnSignature, 8)}
+${this.indent(fieldArgs, 12)}
+${this.indent('}', 8)}
+${this.indent('}', 4)}
+} `;
+  }
+
+  async renderFields(): Promise<RenderedFieldArgs[]> {
     const fields = this.model.properties || {};
     const results: RenderedFieldArgs[] = [];
 
     for (const [fieldName, field] of Object.entries(fields)) {
       const rendered = await this.renderField(fieldName, field);
-      results.push(rendered)
+      results.push(rendered);
     }
 
     if (this.model.additionalProperties !== undefined) {
-      const propertyName = this.additionalPropertyTypeName(this.model,);
-      const additionalProperty = await this.runFieldPreset(propertyName, this.model.additionalProperties, FieldType.additionalProperty);
-      results.push(additionalProperty);
+      results.push(await this.renderAdditionalProperties(this.model.additionalProperties));
     }
-
-
-    return results
+    if (this.model.patternProperties !== undefined) {
+      results.concat(await this.renderPatternProperties(this.model.patternProperties));
+    }
+    return results;
   }
 
-  async renderField(fieldName: name, field: CommonModel): Promise<RenderedFieldArgs> {
+  async renderField(fieldName: string, field: CommonModel): Promise<RenderedFieldArgs> {
     const required = this.isFieldRequired(fieldName);
-    let fieldArgs = { field, fieldName, required, fieldType: FieldType.field } as FieldArgs
+    const fieldArgs = { field, fieldName, required, fieldType: FieldType.field } as FieldArgs;
     const renderedFieldName = await this.runPreset('fieldName', { fieldName, field, fieldType: FieldType.field, required });
     const renderedFieldType = await this.runPreset('fieldType', { fieldName, field, fieldType: FieldType.field, required });
     const renderedFieldMacro = await this.runPreset('fieldMacro', { fieldName, field, fieldType: FieldType.field, required });
-    const renderedFieldContent = `${renderedFieldMacro}
-pub ${renderedFieldName}: ${renderedFieldType}
-    `
-    const rendered = { fieldName: renderedFieldName, rustType: renderedFieldType, fieldMacro: renderedFieldMacro, fieldContent: renderedFieldContent }
-    return { rendered, ...fieldArgs } as RenderedFieldArgs
+    const renderedFieldContent = this.renderFieldContent(renderedFieldName, renderedFieldType, renderedFieldMacro);
+    const rendered = { fieldName: renderedFieldName, rustType: renderedFieldType, fieldMacro: renderedFieldMacro, fieldContent: renderedFieldContent };
+    return { rendered, ...fieldArgs } as RenderedFieldArgs;
   }
 
-  async renderAdditionalPropertiesField(field: CommonModel)
+  renderFieldContent(renderedFieldName: string, rustType: string, macro: string): string {
+    return `${macro}
+pub ${renderedFieldName}: ${rustType},`;
+  }
 
+  async renderAdditionalProperties(field: CommonModel): Promise<RenderedFieldArgs> {
+    const fieldName = getUniquePropertyName(this.model, DefaultPropertyNames.additionalProperties);
+    const fieldType = FieldType.additionalProperty;
+    const required = false;
+    const renderedFieldName = await this.runPreset('fieldName', { fieldName, field, fieldType, required });
+    const renderedFieldType = await this.runPreset('fieldType', { fieldName, field, fieldType, required });
+    const renderedFieldMacro = await this.runPreset('fieldMacro', { fieldName: 'additionalProperties', field, fieldType, required });
+    const rendered = {
+      fieldMacro: renderedFieldMacro,
+      fieldName: renderedFieldName,
+      rustType: renderedFieldType,
+      fieldContent: this.renderFieldContent(renderedFieldName, renderedFieldType, renderedFieldMacro),
+    } as RenderedRustField;
+    return {
+      fieldName,
+      fieldType,
+      required,
+      field,
+      rendered
+    } as RenderedFieldArgs;
+  }
 
+  async renderPatternProperties(field: { [key: string]: CommonModel }): Promise<RenderedFieldArgs[]> {
+    const fieldType = FieldType.patternProperties;
+    const required = false;
+    const results: RenderedFieldArgs[] = [];
+    for (const [pattern, patternModel] of Object.entries(field)) {
+      const fieldName = getUniquePropertyName(this.model, `${pattern}${DefaultPropertyNames.patternProperties} `);
+      const renderedFieldName = await this.runPreset('fieldName', { fieldName, field: patternModel, fieldType, required });
+      const renderedFieldType = await this.runPreset('fieldType', { fieldName, field: patternModel, fieldType, required });
+      const renderedFieldMacro = await this.runPreset('fieldMacro', { fieldName, field: patternModel, fieldType, required });
+      const rendered = {
+        fieldMacro: renderedFieldMacro,
+        fieldName: renderedFieldName,
+        rustType: renderedFieldType,
+        fieldContent: this.renderFieldContent(renderedFieldName, renderedFieldType, renderedFieldMacro),
+      } as RenderedRustField;
+      results.push({
+        fieldName,
+        fieldType,
+        required,
+        field: patternModel,
+        rendered
+      } as RenderedFieldArgs);
+    }
+    return results;
+  }
 
-  // if (this.model.patternProperties !== undefined) {
-  //   for (const [pattern, patternModel] of Object.entries(this.model.patternProperties)) {
-  //     const propertyName = getUniquePropertyName(this.model, `${pattern}${DefaultPropertyNames.patternProperties}`);
-  //     const renderedPatternProperty = await this.runFieldPreset(propertyName, patternModel, FieldType.patternProperties);
-  //     content.push(renderedPatternProperty);
-  //   }
-  // }
-  // return this.renderBlock(content);
-  //   }
-
-  renderFieldMacro(options: RustRenderFieldTypeOptions): string {
-    const { originalFieldName, required } = options;
+  renderFieldMacro(originalFieldName: string, required: boolean): string {
     let serdeArgs = `rename = "${originalFieldName}"`;
-    if (!required) {
+    if (required === false) {
       serdeArgs += ', skip_serializing_if = "Option::is_none"';
     }
-
     return `#[serde(${serdeArgs})]`;
   }
 
@@ -114,36 +187,14 @@ export const RUST_DEFAULT_STRUCT_PRESET: StructPreset<StructRenderer> = {
     return renderer.nameField(fieldName, field);
   },
 
-  fieldMacro({ required, fieldName, renderer, fieldType }) {
-    const options = { originalFieldName: fieldName, required } as RustRenderFieldTypeOptions;
-    if (fieldType === FieldType.additionalProperty) {
-      options.originalFieldName = 'additionalProperty';
-    } else if (fieldType == FieldType.patternProperties) {
-      options.originalFieldName = "PatternProperties"
-    }
-    return renderer.renderFieldMacro(options);
+  fieldMacro({ required, fieldName, renderer }) {
+    return renderer.renderFieldMacro(fieldName, required);
   },
 
-  fieldType({ field, rendered, renderer, fieldName, required, fieldType }) {
-
-    const outFieldName = rendered?.fieldName
-    const options = { originalFieldName: fieldName, required } as RustRenderFieldTypeOptions;
-
-    let fieldType = renderer.renderType(field, options);
-    if (type === FieldType.additionalProperty || type === FieldType.patternProperties) {
-      options.originalFieldName = 'additionalProperty';
-      macro = renderer.renderFieldMacro(options);
-      fieldType = renderer.toRustType(type, field, options);
+  fieldType({ field, renderer, fieldName, required, fieldType }) {
+    if (fieldType === FieldType.additionalProperty || fieldType === FieldType.patternProperties) {
+      return renderer.toRustType(fieldType, field, fieldName);
     }
-    return fieldType
-    const content = `${macro}
-pub ${outFieldName}: ${fieldType},`;
-    return {
-      fieldContent: content,
-      fieldName: outFieldName,
-      rustType: fieldType
-    } as RenderedRustField
-  };
-
-}
-}
+    return renderer.renderType(field, fieldName, required);
+  }
+};

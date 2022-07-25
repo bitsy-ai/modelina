@@ -12,38 +12,38 @@ describe('RustRenderer', () => {
 
   describe('renderType', () => {
     test('Should render optional integer as Option<i32> type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int32' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i32>');
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'integer' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i32>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int32' }), '', false)).toEqual('Option<i32>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'integer' }), '', false)).toEqual('Option<i32>');
     });
     test('Should render required integer as i32 type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int32' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i32');
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'integer' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i32');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int32' }), '', true)).toEqual('i32');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'integer' }), '', true)).toEqual('i32');
     });
     test('Should render optional long as Option<i64> type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int64' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i64>');
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'long' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<i64>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int64' }), '', false)).toEqual('Option<i64>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'long' }), '', false)).toEqual('Option<i64>');
     });
     test('Should render required long as i64 type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int64' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i64');
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'long' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('i64');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'int64' }), '', true)).toEqual('i64');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'long' }), '', true)).toEqual('i64');
     });
     test('Should render optional number as Option<f64> type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'number' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<f64>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'number' }), '', false)).toEqual('Option<f64>');
     });
     test('Should render required number as f64 type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'number' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('f64');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'number' }), '', true)).toEqual('f64');
     });
     test('Should render optional string as Option<String> type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'string' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<String>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'string' }), '', false)).toEqual('Option<String>');
     });
     test('Should render required string as String type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'string' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('String');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'string' }), '', true)).toEqual('String');
     });
     test('Should render optional boolean as Option<bool> type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'boolean' }), { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<bool>');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'boolean' }), '', false)).toEqual('Option<bool>');
     });
     test('Should render required boolean as bool type', () => {
-      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'boolean' }), { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('bool');
+      expect(renderer.renderType(CommonModel.toCommonModel({ type: 'boolean' }), '', true)).toEqual('bool');
     });
     test('Should render optional uniform array as Option<Vec<T>>', () => {
       const model = CommonModel.toCommonModel({
@@ -52,7 +52,7 @@ describe('RustRenderer', () => {
           type: 'string'
         },
       });
-      expect(renderer.renderType(model, { originalFieldName: '', required: false } as RustRenderFieldTypeOptions)).toEqual('Option<Vec<String>>');
+      expect(renderer.renderType(model, '', false)).toEqual('Option<Vec<String>>');
     });
     test('Should render required uniform array as Vec<T>', () => {
       const model = CommonModel.toCommonModel({
@@ -61,7 +61,7 @@ describe('RustRenderer', () => {
           type: 'string'
         },
       });
-      expect(renderer.renderType(model, { originalFieldName: '', required: true } as RustRenderFieldTypeOptions)).toEqual('Vec<String>');
+      expect(renderer.renderType(model, '', true)).toEqual('Vec<String>');
     });
     test('Should render optional boxed named struct for anonymous tuple', () => {
       // 
@@ -100,7 +100,7 @@ describe('RustRenderer', () => {
           }
         ]
       });
-      expect(renderer.renderType(model, { originalFieldName: 'labeled_coordinates', required: false, } as RustRenderFieldTypeOptions)).toEqual('Option<Box<PlayerLabeledCoordinates>>');
+      expect(renderer.renderType(model, 'labeled_coordinates', false)).toEqual('Option<Box<PlayerLabeledCoordinates>>');
     });
     test('Should render required boxed named struct for anonymous tuple', () => {
       // 
@@ -139,14 +139,14 @@ describe('RustRenderer', () => {
           }
         ]
       });
-      expect(renderer.renderType(model, { originalFieldName: 'labeled_coordinates', required: true, } as RustRenderFieldTypeOptions)).toEqual('Box<PlayerLabeledCoordinates>');
+      expect(renderer.renderType(model, 'labeled_coordinates', true)).toEqual('Box<PlayerLabeledCoordinates>');
     });
 
     test('Should render optional boxed ref in PascalCase', () => {
       const model = CommonModel.toCommonModel({
         $ref: '<anonymous-schema-1>'
       });
-      expect(renderer.renderType(model, { originalFieldName: '', required: false, } as RustRenderFieldTypeOptions)).toEqual('Option<Box<crate::AnonymousSchema1>>');
+      expect(renderer.renderType(model, '', false)).toEqual('Option<Box<crate::AnonymousSchema1>>');
     });
     test('Should render anonymous object as boxed ref to struct in the same module', () => {
       const model = CommonModel.toCommonModel({
@@ -162,7 +162,7 @@ describe('RustRenderer', () => {
           }
         }
       });
-      expect(renderer.renderType(model, { originalFieldName: 'anonymousObject', required: true, })).toEqual('Box<crate::AnonymousObject>');
+      expect(renderer.renderType(model, 'anonymousObject', true)).toEqual('Box<crate::AnonymousObject>');
     });
 
     test('Should render $ref with $id as reference to imported model', () => {
@@ -181,7 +181,7 @@ describe('RustRenderer', () => {
         },
         additionalProperties: false
       });
-      expect(renderer.renderType(model, { originalFieldName: 'Person', required: true, })).toEqual('Box<crate::Person>');
+      expect(renderer.renderType(model, 'Person', true)).toEqual('Box<crate::Person>');
     });
   });
 });

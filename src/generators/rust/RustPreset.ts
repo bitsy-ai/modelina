@@ -27,13 +27,17 @@ export interface FieldArgs {
     required: boolean
 }
 
+export interface FieldTypeArgs extends FieldArgs {
+    originalFieldName: string
+}
+
 export interface RenderedFieldArgs extends FieldArgs {
     rendered: RenderedRustField
 }
 
 export interface TupleArgs {
     fieldName: string;
-    originalFieldName: String;
+    originalFieldName: string;
     field: CommonModel;
     parent: CommonModel;
 }
@@ -49,13 +53,20 @@ export interface RustManifestArgs {
     repository: string;
 }
 
+export interface RenderedRustEnum {
+    macroContent: string,
+    memberContent: string,
+    originalValue: string,
+    isDefault: boolean,
+}
+
 export interface RustLibArgs {
     modelNames: string[];
 }
 
 export interface StructPreset<R extends AbstractRenderer, O extends object = any> extends CommonPreset<R, O> {
     fieldMacro?: (args: PresetArgs<R, O> & FieldArgs) => Promise<string> | string;
-    fieldType?: (args: PresetArgs<R, O> & FieldArgs) => Promise<string> | string;
+    fieldType?: (args: PresetArgs<R, O> & FieldTypeArgs) => Promise<string> | string;
     fieldName?: (args: PresetArgs<R, O> & FieldArgs) => Promise<string> | string;
     defaults?: (args: PresetArgs<R, O> & FieldArgs) => Promise<string> | string;
 }
@@ -77,8 +88,8 @@ export type RustPreset<O extends object = any> = Preset<{
 }>;
 
 export const RUST_DEFAULT_PRESET: RustPreset = {
-    struct: RUST_DEFAULT_STRUCT_PRESET,
-    tuple: RUST_DEFAULT_TUPLE_PRESET,
-    enum: RUST_DEFAULT_ENUM_PRESET,
-    package: RUST_DEFAULT_PACKAGE_PRESET
+  struct: RUST_DEFAULT_STRUCT_PRESET,
+  tuple: RUST_DEFAULT_TUPLE_PRESET,
+  enum: RUST_DEFAULT_ENUM_PRESET,
+  package: RUST_DEFAULT_PACKAGE_PRESET
 };

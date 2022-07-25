@@ -1,13 +1,12 @@
-import { defaultRustRenderCompleteModelOptions, RustGenerator, RustRenderCompleteModelOptions } from '../../../src/generators';
+import { RustGenerator, RustOptions, defaultRustOptions } from '../../../src/generators';
 import { Logger } from '../../../src/utils/LoggingInterface';
 describe('RustGenerator', () => {
   let generator: RustGenerator;
   beforeEach(() => {
-    generator = new RustGenerator();
+    generator = new RustGenerator({ ...defaultRustOptions, renderInitializer: false, renderSupportingFiles: false, renderDefaults: false } as RustOptions);
   });
 
   describe('Reserved keywords', () => {
-
     it('shoud return true if the word is a reserved keyword', () => {
       expect(generator.reservedRustKeyword('as')).toBe(true);
       expect(generator.reservedRustKeyword('async')).toBe(true);
@@ -69,7 +68,6 @@ describe('RustGenerator', () => {
       expect(generator.reservedRustKeyword('class')).toBe(false);
     });
 
-
     it('should prefix a reserved keyword appearing in document', async () => {
       const doc = {
         $id: 'Self',
@@ -88,8 +86,8 @@ describe('RustGenerator', () => {
       const expected = `// ReservedSelf represents a ReservedSelf model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct ReservedSelf {
-  #[serde(rename = "union")]
-  pub reserved_union: String,
+    #[serde(rename = "union")]
+    pub reserved_union: String,
 }`;
       expect(structModel.result).toEqual(expected);
     });
@@ -114,15 +112,14 @@ pub struct ReservedSelf {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "self")]
-  pub reserved_self: Box<crate::ReservedSelf>,
+    #[serde(rename = "self")]
+    pub reserved_self: Box<crate::ReservedSelf>,
 }`;
       expect(structModel.result).toEqual(expected);
     });
-  })
+  });
 
   describe('Enum & Polymorphic Models', () => {
-
     test('should render union `enum` where members are different types', async () => {
       const doc = {
         $id: 'States',
@@ -135,16 +132,16 @@ pub struct Address {
       const expected = `// States enum of type: [string,number,boolean,object]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum States {
-  #[serde(rename = "0")]
-  Texas(String),
-  #[serde(rename = "1")]
-  F64(f64),
-  #[serde(rename = "2")]
-  1(String),
-  #[serde(rename = "3")]
-  Bool(bool),
-  #[serde(rename = "4")]
-  HashMap(HashMap<String,String>)
+    #[serde(rename = "0")]
+    Texas(String),
+    #[serde(rename = "1")]
+    F64(f64),
+    #[serde(rename = "2")]
+    1(String),
+    #[serde(rename = "3")]
+    Bool(bool),
+    #[serde(rename = "4")]
+    HashMap(HashMap<String,String>)
 }`;
       const enumModel = await generator.renderEnum(model, inputModel);
       expect(enumModel.result).toEqual(expected);
@@ -173,8 +170,8 @@ pub enum States {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "members")]
-  pub members: Box<crate::Members>,
+    #[serde(rename = "members")]
+    pub members: Box<crate::Members>,
 }`;
       expect(structModel.result).toEqual(expected);
     });
@@ -192,18 +189,18 @@ pub struct Address {
       const expected = `// States enum of type: String
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum States {
-  #[serde(rename = "Texas")]
-  Texas,
-  #[serde(rename = "Alabama")]
-  Alabama,
-  #[serde(rename = "California")]
-  California,
+    #[serde(rename = "Texas")]
+    Texas,
+    #[serde(rename = "Alabama")]
+    Alabama,
+    #[serde(rename = "California")]
+    California,
 }`;
       const enumModel = await generator.renderEnum(model, inputModel);
       expect(enumModel.result).toEqual(expected);
       expect(enumModel.dependencies).toEqual([]);
     });
-  })
+  });
 
   describe('Serde', () => {
     test('serde should perserve original field name/case', async () => {
@@ -222,8 +219,8 @@ pub enum States {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "streetName")]
-  pub street_name: String,
+    #[serde(rename = "streetName")]
+    pub street_name: String,
 }`;
       const inputModel = await generator.process(doc);
       const model = inputModel.models['_address'];
@@ -236,10 +233,10 @@ pub struct Address {
       expect(structModel.result).toEqual(expected);
       expect(structModel.dependencies).toEqual([]);
     });
-  })
+  });
 
   describe('Struct', () => {
-    test('should render `struct` with module-level struct dependency', async () => {
+    test('should render `struct` with nested dependency', async () => {
       const doc = {
         $id: '_address',
         type: 'object',
@@ -257,8 +254,8 @@ pub struct Address {
       const expectedStruct = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "nested_object", skip_serializing_if = "Option::is_none")]
-  pub nested_object: Option<Box<crate::NestedObject>>,
+    #[serde(rename = "nested_object", skip_serializing_if = "Option::is_none")]
+    pub nested_object: Option<Box<crate::NestedObject>>,
 }`;
       const inputModel = await generator.process(doc);
       const model = inputModel.models['_address'];
@@ -267,8 +264,22 @@ pub struct Address {
       expect(structModel.result).toEqual(expectedStruct);
       expect(structModel.rustModuleDependencies.length).toEqual(0);
 
-      const module = await generator.renderCompleteModel(model, inputModel);
-      expect(module.result).toEqual(expectedStruct);
+      const expectedModule = `// Address represents a Address model.
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Address {
+    #[serde(rename = "nested_object", skip_serializing_if = "Option::is_none")]
+    pub nested_object: Option<Box<crate::NestedObject>>,
+}
+
+impl Address {
+    pub fn new() -> Address {
+        Address {
+            nested_object: None,
+        }
+    }
+}`;
+      const module = await generator.renderCompleteModel(model, inputModel, defaultRustOptions);
+      expect(module.result).toEqual(expectedModule);
     });
 
     test('should render `struct` with additional properties of string type', async () => {
@@ -286,10 +297,10 @@ pub struct Address {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "additionalProperty")]
-  pub address_additional_properties: Option<std::collections::HashMap<String, String>>,
+    #[serde(rename = "street_name")]
+    pub street_name: String,
+    #[serde(rename = "additionalProperties", skip_serializing_if = "Option::is_none")]
+    pub additional_properties: Option<std::collections::HashMap<String, String>>,
 }`;
 
       const inputModel = await generator.process(doc);
@@ -319,10 +330,10 @@ pub struct Address {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "additionalProperty")]
-  pub address_additional_properties: Option<std::collections::HashMap<String, i32>>,
+    #[serde(rename = "street_name")]
+    pub street_name: String,
+    #[serde(rename = "additionalProperties", skip_serializing_if = "Option::is_none")]
+    pub additional_properties: Option<std::collections::HashMap<String, i32>>,
 }`;
 
       const inputModel = await generator.process(doc);
@@ -350,10 +361,10 @@ pub struct Address {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "additionalProperty")]
-  pub address_additional_properties: Option<std::collections::HashMap<String, serde_json::Value>>,
+    #[serde(rename = "street_name")]
+    pub street_name: String,
+    #[serde(rename = "additionalProperties", skip_serializing_if = "Option::is_none")]
+    pub additional_properties: Option<std::collections::HashMap<String, serde_json::Value>>,
 }`;
 
       const inputModel = await generator.process(doc);
@@ -384,16 +395,16 @@ pub struct Address {
       const expected = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "city")]
-  pub city: String,
-  #[serde(rename = "state")]
-  pub state: String,
-  #[serde(rename = "house_number")]
-  pub house_number: f64,
-  #[serde(rename = "array_type")]
-  pub array_type: Vec<String>,
+    #[serde(rename = "street_name")]
+    pub street_name: String,
+    #[serde(rename = "city")]
+    pub city: String,
+    #[serde(rename = "state")]
+    pub state: String,
+    #[serde(rename = "house_number")]
+    pub house_number: f64,
+    #[serde(rename = "array_type")]
+    pub array_type: Vec<String>,
 }`;
 
       const inputModel = await generator.process(doc);
@@ -431,22 +442,32 @@ pub struct Address {
       const expectedStruct = `// Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "tuple_type", skip_serializing_if = "Option::is_none")]
-  pub tuple_type: Option<Box<AddressTupleType>>,
+    #[serde(rename = "street_name")]
+    pub street_name: String,
+    #[serde(rename = "tuple_type", skip_serializing_if = "Option::is_none")]
+    pub tuple_type: Option<Box<AddressTupleType>>,
 }`;
 
       const expectedModule = `// AddressTupleType represents field tuple_type from _address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct AddressTupleType(String, f64, Box<crate::NestedTest>);
+
 // Address represents a Address model.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "tuple_type", skip_serializing_if = "Option::is_none")]
-  pub tuple_type: Option<Box<AddressTupleType>>,
+    #[serde(rename = "street_name")]
+    pub street_name: String,
+    #[serde(rename = "tuple_type", skip_serializing_if = "Option::is_none")]
+    pub tuple_type: Option<Box<AddressTupleType>>,
+}
+
+impl Address {
+    pub fn new(street_name: String) -> Address {
+        Address {
+            street_name,
+            tuple_type: None,
+        }
+    }
 }`;
 
       const inputModel = await generator.process(doc);
@@ -456,56 +477,9 @@ pub struct Address {
       expect(structModel.result).toEqual(expectedStruct);
       expect(structModel.rustModuleDependencies.length).toEqual(1);
 
-      const module = await generator.renderCompleteModel(model, inputModel);
+      const module = await generator.renderCompleteModel(model, inputModel, defaultRustOptions);
       expect(module.result).toEqual(expectedModule);
-
     });
-
-  })
-
-
-  describe('generateCompleteModels', () => {
-
-    it('should render Default implementation', async () => {
-      const doc = {
-        $id: '_address',
-        type: 'object',
-        definitions: {
-          NestedTest: {
-            type: 'object', $id: 'NestedTest', properties: { stringProp: { type: 'string' } }
-          }
-        },
-        properties: {
-          street_name: { type: 'string', default: 'Baker Street' },
-          street_number: { type: 'string', default: 221 },
-          dummyArrayValueRank: {
-            type: "integer",
-            default: -1,
-            oneOf: [
-
-            ]
-          },
-        },
-        required: ['street_name'],
-        additionalProperties: false
-      };
-      const expectedModule = `// AddressTupleType represents field tuple_type from _address model.
-#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
-pub struct AddressTupleType(String, f64, Box<crate::NestedTest>);
-// Address represents a Address model.
-#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
-pub struct Address {
-  #[serde(rename = "street_name")]
-  pub street_name: String,
-  #[serde(rename = "tuple_type", skip_serializing_if = "Option::is_none")]
-  pub tuple_type: Option<Box<AddressTupleType>>,
-}`;
-      const models = await generator.generateCompleteModels(doc, { renderDefaults: true, renderSupportingFiles: true } as RustRenderCompleteModelOptions);
-      console.log(models)
-    })
-
-  })
-
-
+  });
 });
 

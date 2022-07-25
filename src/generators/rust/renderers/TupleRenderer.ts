@@ -1,5 +1,5 @@
 
-import { RustRenderer, RustRenderFieldTypeOptions } from '../RustRenderer';
+import { RustRenderer } from '../RustRenderer';
 import { TuplePreset } from '../RustPreset';
 import { CommonModel } from 'models';
 
@@ -13,13 +13,13 @@ export class TupleRenderer extends RustRenderer {
     return '';
   }
 
-  renderTupleFieldTypes(field: CommonModel, options: RustRenderFieldTypeOptions): string[] {
+  renderTupleFieldTypes(fieldName: string, field: CommonModel): string[] {
     if (field.items && Array.isArray(field.items)) {
       return field.items.map((item) => {
         if (item.$ref !== undefined) {
-          return this.toRustType('$ref', item, options);
+          return this.toRustType('$ref', item, item.$ref);
         }
-        return this.toRustType(item.type, item, options);
+        return this.toRustType(item.type, item, fieldName);
       });
     }
     return [''];
@@ -35,10 +35,8 @@ export const RUST_DEFAULT_TUPLE_PRESET: TuplePreset<TupleRenderer> = {
   },
 
   tuple({ fieldName, originalFieldName, field, renderer, parent }) {
-    const options: RustRenderFieldTypeOptions = { required: true, originalFieldName: fieldName };
-
     const doc = renderer.renderComments(`${fieldName} represents field ${originalFieldName} from ${parent.$id} model.`);
-    const fields = renderer.renderTupleFieldTypes(field, options);
+    const fields = renderer.renderTupleFieldTypes(originalFieldName, field);
 
     return `${doc}
 ${renderer.renderTypeMacro()}

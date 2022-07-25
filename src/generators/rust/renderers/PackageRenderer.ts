@@ -7,7 +7,7 @@ import { PackagePreset } from '../RustPreset';
  */
 export class PackageRenderer extends RustRenderer {
   public defaultSelf(): string {
-    return ''
+    return '';
   }
 }
 

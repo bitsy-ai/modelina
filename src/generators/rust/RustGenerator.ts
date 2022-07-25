@@ -108,8 +108,7 @@ export const defaultRustOptions: RustOptions = {
   packageFeatures: [RustPackageFeatures.json] as RustPackageFeatures[]
 };
 
-
-export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderCompleteModelOptions> {
+export class RustGenerator extends AbstractGenerator<RustOptions, RustOptions> {
   static defaultOptions: RustOptions = {
     ...defaultRustOptions,
     ...defaultGeneratorOptions,
@@ -128,10 +127,10 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
   render(model: CommonModel, inputModel: CommonInputModel): Promise<RustRenderOutput> {
     const kind = TypeHelpers.extractKind(model);
     switch (kind) {
-      case ModelKind.OBJECT:
-        return this.renderStruct(model, inputModel);
-      case ModelKind.ENUM:
-        return this.renderEnum(model, inputModel);
+    case ModelKind.OBJECT:
+      return this.renderStruct(model, inputModel);
+    case ModelKind.ENUM:
+      return this.renderEnum(model, inputModel);
     }
     Logger.warn(`Rust generator, cannot generate this type of model, ${model.$id}`);
     return Promise.resolve(RustRenderOutput.toRustRenderOutput({ fileName: '', result: '', renderedName: '', rustModuleDependencies: [] }));
@@ -144,7 +143,8 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
    * @param inputModel
    * @param options
    */
-  async renderCompleteModel(model: CommonModel, inputModel: CommonInputModel, options: RustRenderCompleteModelOptions): Promise<RustRenderOutput> {
+  async renderCompleteModel(model: CommonModel, inputModel: CommonInputModel, options: RustOptions): Promise<RustRenderOutput> {
+    this.options = { ...this.options, ...options };
     const outputModel = await this.render(model, inputModel);
 
     let rustModuleDependencies = '';
@@ -153,14 +153,9 @@ export class RustGenerator extends AbstractGenerator<RustOptions, RustRenderComp
       rustModuleDependencies += dependencyOutputs.map(o => o.result).join('\n');
     }
     const outputContent = `${rustModuleDependencies}
-${outputModel.result}
-`;
+${outputModel.result}`.trim();
 
     return RustRenderOutput.toRustRenderOutput({ fileName: outputModel.fileName, result: outputContent, renderedName: outputModel.renderedName, rustModuleDependencies: outputModel.rustModuleDependencies });
-  }
-
-  async renderDefaultImplementation(model: CommonModel, inputModel: CommonInputModel, outputModel: RustRenderOutput): Promise<RustRenderOutput> {
-
   }
 
   /**
@@ -171,7 +166,7 @@ ${outputModel.result}
    * @param input 
    * @param options to use for rendering full output
    */
-  public async generateCompleteModels(input: Record<string, unknown> | CommonInputModel, options: RustRenderCompleteModelOptions): Promise<RustOutputModel[]> {
+  public async generateCompleteModels(input: Record<string, unknown> | CommonInputModel, options: RustOptions): Promise<RustOutputModel[]> {
     Logger.info('Generating models from options: ', options);
     const inputModel = input instanceof CommonInputModel ? input : await this.process(input);
     const modules = await Promise.all(Object.values(inputModel.models).map(async (model) => {
@@ -221,19 +216,19 @@ ${outputModel.result}
   async renderDependencies(model: CommonModel, inputModel: CommonInputModel, dependencies: RustDependency[], accumulator: RustRenderOutput[]): Promise<RustRenderOutput[]> {
     await Promise.all(dependencies.map(async (dependency: RustDependency) => {
       switch (dependency.type) {
-        case RustDependencyType.tuple: {
-          const { parent, fieldName, originalFieldName, field } = dependency;
-          const result = await this.renderTuple(fieldName, originalFieldName, field, parent, inputModel);
-          accumulator.push(result);
-          if (result.rustModuleDependencies.length > 0) {
-            await this.renderDependencies(dependency.field, inputModel, result.rustModuleDependencies, accumulator);
-          }
-          return accumulator;
+      case RustDependencyType.tuple: {
+        const { parent, fieldName, originalFieldName, field } = dependency;
+        const result = await this.renderTuple(fieldName, originalFieldName, field, parent, inputModel);
+        accumulator.push(result);
+        if (result.rustModuleDependencies.length > 0) {
+          await this.renderDependencies(dependency.field, inputModel, result.rustModuleDependencies, accumulator);
         }
-        case RustDependencyType.struct:
-          return accumulator;
-        default:
-          return accumulator;
+        return accumulator;
+      }
+      case RustDependencyType.struct:
+        return accumulator;
+      default:
+        return accumulator;
       }
     }));
     return accumulator;

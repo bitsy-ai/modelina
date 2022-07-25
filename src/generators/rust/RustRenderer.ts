@@ -60,6 +60,26 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     return `src/${this.nameModule(name, model)}.rs`;
   }
 
+  isBoxed(rustType: string): boolean {
+    return rustType.includes('Box');
+  }
+
+  /**
+   * Extract inner type if field is Boxed
+   * 
+   * in a perfect world, we should be building up the context required to represent a field in different contexts
+   * but this is just a first pass  
+   */
+  unbox(rustType: string): string {
+    if (rustType.includes('Box')) {
+      return rustType.substring(
+        rustType.indexOf('Box<') + 4,
+        rustType.indexOf('>')
+      );
+    }
+    return rustType;
+  }
+
   /**
    * Renders the name of a type based on provided generator option naming convention type function.
    * 
@@ -141,14 +161,14 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     const formattedRef = this.nameType(model.$ref);
     return `Box<crate::${formattedRef}>`;
   }
-  renderType(model: CommonModel, options: RustRenderFieldTypeOptions): string {
+  renderType(model: CommonModel, originalFieldName: string, required: boolean): string {
     let fieldType = '';
     if (model.$ref !== undefined) {
-      fieldType = this.toRustType('$ref', model, options);
+      fieldType = this.toRustType('$ref', model, originalFieldName);
     } else {
-      fieldType = this.toRustType(model?.type, model, options);
+      fieldType = this.toRustType(model?.type, model, originalFieldName);
     }
-    if (options.required === true) {
+    if (required === true) {
       return fieldType;
     }
     return `Option<${fieldType}>`;
@@ -159,9 +179,9 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
     return lines.map(line => `// ${line}`).join('\n');
   }
 
-  nameTupleType(options: RustRenderFieldTypeOptions): string {
+  nameTupleType(originalFieldName: string): string {
     const prefix = this.nameType(this.model.$id);
-    const suffix = this.nameType(options.originalFieldName);
+    const suffix = this.nameType(originalFieldName);
     return `${prefix}${suffix}`;
   }
 
@@ -180,56 +200,56 @@ export abstract class RustRenderer extends AbstractRenderer<RustOptions> {
    * @param options 
    * @returns 
    */
-  toRustType(type: undefined | string | string[] | FieldType, field: CommonModel, options: RustRenderFieldTypeOptions): string {
+  toRustType(type: undefined | string | string[] | FieldType, field: CommonModel, originalFieldName: string): string {
     switch (type) {
-      case '$ref':
-        return this.refToRustType(field);
-      case 'string':
-        return 'String';
-      case 'int32':
-      case 'integer':
-        return 'i32';
-      case 'int64':
-      case 'long':
-        return 'i64';
-      case 'number':
-        return 'f64';
-      case 'boolean':
-        return 'bool';
-      case 'array': {
-        // handle single field.item where type is uniform
-        if (this.isVec(field)) {
-          const items = field.items as CommonModel;
-          const innerType = this.renderType(items, { required: true } as RustRenderFieldTypeOptions);
-          return `Vec<${innerType}>`;
-          // handle tuple of heterogenous types by generating a tuple struct
-        } else if (this.isTuple(field)) {
-          const fieldName = this.nameTupleType(options);
-          const dependency: RustDependency = { originalFieldName: options.originalFieldName, type: RustDependencyType.tuple, field, fieldName, parent: this.model };
-          this.addRustDependency(dependency);
-          this.addDependency(fieldName);
-          return `Box<${fieldName}>`;
-        }
-        // we should never reach this return statement, but log a warning if we do.
-        // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
-        Logger.warn(UNSTABLE_FIELD_IMPLEMENTATION_WARNING(options.originalFieldName));
-        return 'serde_json::Value';
-      }
-      case FieldType.additionalProperty:
-        if (this.isUniformType(field)) {
-          return `Option<std::collections::HashMap<String, ${this.toRustType(field.type, field, options)}>>`;
-        }
-        // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
-        return 'Option<std::collections::HashMap<String, serde_json::Value>>';
-
-      case 'object':
-      default: {
-        const fieldName = this.nameType(options.originalFieldName);
-        const dependency: RustDependency = { originalFieldName: options.originalFieldName, type: RustDependencyType.struct, field, fieldName, parent: this.model };
+    case '$ref':
+      return this.refToRustType(field);
+    case 'string':
+      return 'String';
+    case 'int32':
+    case 'integer':
+      return 'i32';
+    case 'int64':
+    case 'long':
+      return 'i64';
+    case 'number':
+      return 'f64';
+    case 'boolean':
+      return 'bool';
+    case 'array': {
+      // handle single field.item where type is uniform
+      if (this.isVec(field)) {
+        const items = field.items as CommonModel;
+        const innerType = this.renderType(items, originalFieldName, true);
+        return `Vec<${innerType}>`;
+        // handle tuple of heterogenous types by generating a tuple struct
+      } else if (this.isTuple(field)) {
+        const fieldName = this.nameTupleType(originalFieldName);
+        const dependency: RustDependency = { originalFieldName, type: RustDependencyType.tuple, field, fieldName, parent: this.model };
         this.addRustDependency(dependency);
         this.addDependency(fieldName);
-        return `Box<crate::${fieldName}>`;
+        return `Box<${fieldName}>`;
       }
+      // we should never reach this return statement, but log a warning if we do.
+      // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
+      Logger.warn(UNSTABLE_FIELD_IMPLEMENTATION_WARNING(originalFieldName));
+      return 'serde_json::Value';
+    }
+    case FieldType.additionalProperty:
+      if (this.isUniformType(field)) {
+        return `Option<std::collections::HashMap<String, ${this.toRustType(field.type, field, originalFieldName)}>>`;
+      }
+      // end-user would have to implement their own serde strategy with From<serde_json::Value<T>>
+      return 'Option<std::collections::HashMap<String, serde_json::Value>>';
+
+    case 'object':
+    default: {
+      const fieldName = this.nameType(originalFieldName);
+      const dependency: RustDependency = { originalFieldName, type: RustDependencyType.struct, field, fieldName, parent: this.model };
+      this.addRustDependency(dependency);
+      this.addDependency(fieldName);
+      return `Box<crate::${fieldName}>`;
+    }
     }
   }
 }
