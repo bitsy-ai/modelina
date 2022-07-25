@@ -43,16 +43,13 @@ description = "${description}"
 edition = "${edition}"
 
 [dependencies]
-jsonwebtoken = {version="7", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version="1", optional = true }
-thiserror = "1"
 
 [dev-dependencies]
 
 [features]
 default = ["json", "jwt"]
-json = ["dep:serde_json"]
-jwt = ["dep:jsonwebtoken"]`;
+json = ["dep:serde_json"]`;
   }
 };
