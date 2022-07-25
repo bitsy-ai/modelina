@@ -6,11 +6,8 @@ import { PackagePreset } from '../RustPreset';
  * @extends RustRenderer
  */
 export class PackageRenderer extends RustRenderer {
-  public async defaultSelf(): Promise<string> {
-    const { packageName, packageVersion, homepage, authors, repository, description, license, edition } = this.options;
-    return this.renderBlock([
-      await this.runPreset('manifest', { packageName, packageVersion, homepage, repository, description, license, edition, authors }),
-    ]);
+  public defaultSelf(): string {
+    return ''
   }
 }
 
